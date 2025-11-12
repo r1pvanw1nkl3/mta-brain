@@ -14,6 +14,7 @@ except FileNotFoundError:
 #GTFS_STATIC_URL = _feed_urls.get("static")
 #GTFS_SUPPLEMENTED_URL = _feed_urls.urls.get("supplemented")
 
-_paths = _settings.get("paths", {})
-LOG_FILE_PATH = _paths.get("log_file", "logs/app.log")
+_log_paths = _settings.get("log_paths", {})
+LOG_FILE_PATH = _log_paths.get("log_path", "logs/app.log")
+ETL_LOG_FILE_PATH = _log_paths.get("etl_log_path", "logs/etl.log")
 

@@ -2,13 +2,15 @@ import logging
 import logging.config
 import json
 import os
-import config
 
-def setup_logging():
+def setup_logging(path: str):
     with open('logging.json', 'r') as f:
         logging_config = json.load(f)
 
-    log_file_path = config.LOG_FILE_PATH
+    if path:
+        log_file_path = path
+    else:
+        log_file_path = "logs/app.log"
 
     log_dir = os.path.dirname(log_file_path)
     if log_dir:
