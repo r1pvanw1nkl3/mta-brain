@@ -16,3 +16,6 @@ Thumbs.db
 
 # logging
 /logs
+
+#Downloaded GTFS data
+/gtfs_static
