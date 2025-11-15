@@ -19,3 +19,6 @@ Thumbs.db
 
 #Downloaded GTFS data
 /gtfs_static
+
+#env
+.env

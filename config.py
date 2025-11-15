@@ -10,6 +10,13 @@ except FileNotFoundError:
     print("FATAL ERROR: settings.json not found.")
     _settings = {}
 
+load_dotenv()
+DB_URL = os.getenv("DB_URL", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME", "gtfs")
+
 _feed_urls = _settings.get("gtfs_feed_urls", {})
 GTFS_STATIC_URL = _feed_urls.get("static")
 GTFS_SUPPLEMENTED_URL = _feed_urls.get("supplemented")
