@@ -3,7 +3,7 @@ version: '3.8'
 services:
   db:
     image: postgres:16
-    container_name: gtfs-postgres
+    container_name: mta-brain-postgres
     restart: always
     
     # env_file still loads your .env for Docker's use
@@ -35,7 +35,7 @@ services:
 
   flyway:
     image: flyway/flyway
-    container_name: gtfs-flyway
+    container_name: mta-brain-flyway
     
     # Map your local 'sql' folder to where Flyway looks for scripts
     volumes:
