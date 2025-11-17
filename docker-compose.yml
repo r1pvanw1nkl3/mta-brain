@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: gtfs-postgres
+    restart: always
+    
+    # env_file still loads your .env for Docker's use
+    env_file:
+      - .env
+      
+    # 'environment' passes variables from the .env file
+    # INTO the container for Postgres (and our script) to use
+    environment:
+      # These 3 create the database and the first (ETL) user
+      POSTGRES_USER: ${ETL_DB_USER}
+      POSTGRES_PASSWORD: ${ETL_DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      
+      # This passes the app user's password to our .sql script
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      
+    ports:
+      - "5432:5432"
+      
+    volumes:
+      # This saves your database data
+      - postgres_data:/var/lib/postgresql/data
+      
+      # --- THIS IS THE NEW PART ---
+      # Mounts your .sql script into the init directory
+      # :ro means "read-only"
+      - ./db_init:/docker-entrypoint-initdb.d:ro
+
+  flyway:
+    image: flyway/flyway
+    container_name: gtfs-flyway
+    
+    # Map your local 'sql' folder to where Flyway looks for scripts
+    volumes:
+      - ./sql:/flyway/sql
+      
+    # Pass config via Environment Variables
+    # Flyway reads these automatically
+    environment:
+      # Connect to the 'db' service defined above
+      FLYWAY_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      FLYWAY_USER: ${ETL_DB_USER}
+      FLYWAY_PASSWORD: ${ETL_DB_PASSWORD}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      
+      # Important: Retry connection until Postgres is ready
+      FLYWAY_CONNECT_RETRIES: 60
+      
+    # Run the 'migrate' command by default
+    command: -baselineOnMigrate=true migrate
+    
+    # Wait for the DB to start before running this
+    depends_on:
+      - db
+
+
+volumes:
+  postgres_data:
