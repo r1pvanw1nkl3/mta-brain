@@ -1,6 +1,6 @@
 from urllib import request
 from urllib.error import URLError, HTTPError
-import config
+from config import settings
 import logging
 import os
 
@@ -8,11 +8,11 @@ logger = logging.getLogger(__name__)
 
 def get_regular_feed():
     """Downloads the regular GTFS feed."""
-    _retrieve_feed("gtfs_subway.zip", config.GTFS_STATIC_URL)
+    _retrieve_feed("gtfs_subway.zip", settings.gtfs_static_url)
 
 def get_supplemented_feed():
     """Downloads the supplemented GTFS feed."""
-    _retrieve_feed("gtfs_supplemented.zip", config.GTFS_SUPPLEMENTED_URL)
+    _retrieve_feed("gtfs_supplemented.zip", settings.gtfs_supplemented_url)
 
 def _retrieve_feed(file_name: str, url: str):
     """
@@ -20,7 +20,7 @@ def _retrieve_feed(file_name: str, url: str):
     """
     logger.info(f"Downloading feed from {url}")
     try:
-        target_dir = os.path.join(config.PROJECT_ROOT, config.GTFS_STATIC_PATH)
+        target_dir = os.path.join(settings.project_root, settings.gtfs_static_path)
         os.makedirs(target_dir, exist_ok=True)
         request.urlretrieve(url, os.path.join(target_dir, file_name))
         logger.info(f"Successfully downloaded {file_name} from {url}")
