@@ -1,7 +1,7 @@
 import os
 import json
 from dotenv import load_dotenv
-import logging
+from psycopg.conninfo import make_conninfo
 
 try:
     with open("settings.json") as f:
@@ -11,11 +11,19 @@ except FileNotFoundError:
     _settings = {}
 
 load_dotenv()
-DB_URL = os.getenv("DB_URL", "localhost")
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_USER = os.getenv("ETL_DB_USER")
+DB_PASSWORD = os.getenv("ETL_DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME", "gtfs")
+
+DB_URL = make_conninfo(
+    host=DB_HOST,
+    port=DB_PORT,
+    dbname=DB_NAME,
+    user=DB_USER,
+    password=DB_PASSWORD
+)
 
 _feed_urls = _settings.get("gtfs_feed_urls", {})
 GTFS_STATIC_URL = _feed_urls.get("static")
