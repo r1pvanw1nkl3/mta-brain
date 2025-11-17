@@ -48,6 +48,7 @@ services:
       FLYWAY_URL: jdbc:postgresql://db:5432/${DB_NAME}
       FLYWAY_USER: ${ETL_DB_USER}
       FLYWAY_PASSWORD: ${ETL_DB_PASSWORD}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
       
       # Important: Retry connection until Postgres is ready
       FLYWAY_CONNECT_RETRIES: 60
