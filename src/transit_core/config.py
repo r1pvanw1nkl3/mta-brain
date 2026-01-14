@@ -1,8 +1,10 @@
 # transit_core/config.py
 
+from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, computed_field
 from psycopg.conninfo import make_conninfo
+from pathlib import Path
 import os
 
 class Settings(BaseSettings):
@@ -31,7 +33,7 @@ class Settings(BaseSettings):
         "sir": "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
     }
 
-    project_root: str = os.path.dirname(os.path.abspath(__file__))
+    project_root: str = str(Path(__file__).resolve().parent.parent.parent)
     log_file_path: str = "logs/app.log"
     etl_log_file_path: str = "logs/etl.log"
     gtfs_static_path: str = "gtfs_static"
@@ -62,4 +64,6 @@ class Settings(BaseSettings):
         extra="ignore" 
     )
 
-settings = Settings()
+@lru_cache()
+def get_settings():
+    return Settings()
