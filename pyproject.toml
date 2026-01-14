@@ -9,6 +9,8 @@ dependencies = [
     "protobuf>=6.33.0",
     "psycopg-pool>=3.2.7",
     "psycopg[binary]>=3.2.12",
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.12.0",
     "python-json-logger>=4.0.0",
     "requests>=2.32.5",
 ]
