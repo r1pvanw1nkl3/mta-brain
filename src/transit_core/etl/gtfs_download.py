@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 def get_regular_feed():
     """Downloads the regular GTFS feed."""
     settings = get_settings()
-    _retrieve_feed("gtfs_subway.zip", settings.gtfs_static_url)
+    return _retrieve_feed("gtfs_subway.zip", settings.gtfs_static_url)
 
 def get_supplemented_feed():
     """Downloads the supplemented GTFS feed."""
     settings = get_settings()
-    _retrieve_feed("gtfs_supplemented.zip", settings.gtfs_supplemented_url)
+    return _retrieve_feed("gtfs_supplemented.zip", settings.gtfs_supplemented_url)
 
 def _retrieve_feed(file_name: str, url: str):
     """
@@ -25,8 +25,11 @@ def _retrieve_feed(file_name: str, url: str):
         settings = get_settings()
         target_dir = os.path.join(settings.project_root, settings.gtfs_static_path)
         os.makedirs(target_dir, exist_ok=True)
-        request.urlretrieve(url, os.path.join(target_dir, file_name))
+        full_file_path = os.path.join(target_dir, file_name)
+        request.urlretrieve(url, full_file_path)
         logger.info(f"Successfully downloaded {file_name} from {url}")
+        return full_file_path
+
     except (HTTPError, URLError) as e:
         logger.error(f"Failed to download feed from {url}. Error: {e}")
     except OSError as e:

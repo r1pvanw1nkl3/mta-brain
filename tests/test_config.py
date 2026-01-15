@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 from transit_core.config import Settings, get_settings
 
-def test_database_url_generation():
+def test_database_url_generation(mock_env_vars):
     """
     Test that the ETL database URL is constructed correctly
     from the individual components.
@@ -21,7 +21,7 @@ def test_database_url_generation():
     assert "password=test_pass" in url
     assert "port=9999" in url
 
-def test_missing_env_variable(monkeypatch):
+def test_missing_env_variable(monkeypatch, mock_env_vars):
     monkeypatch.delenv("ETL_DB_PASSWORD", raising=False)
     monkeypatch.delenv("APP_DB_PASSWORD", raising=False)
 
@@ -31,7 +31,7 @@ def test_missing_env_variable(monkeypatch):
     assert "etl_db_password" in str(exc_info.value)
     assert "Field required" in str(exc_info.value)
 
-def test_project_paths_resolution():
+def test_project_paths_resolution(mock_env_vars):
     """
     Verify that paths are resolving to the project root,
     not inside the src directory.
