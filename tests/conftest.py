@@ -1,5 +1,7 @@
 import pytest
+
 from transit_core.config import get_settings
+
 
 @pytest.fixture
 def mock_env_vars(monkeypatch):

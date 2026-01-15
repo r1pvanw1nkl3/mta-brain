@@ -1,10 +1,11 @@
+import json
 import logging
 import logging.config
-import json
 import os
 
+
 def setup_logging(path: str):
-    with open('logging.json', 'r') as f:
+    with open("logging.json", "r") as f:
         logging_config = json.load(f)
 
     if path:
@@ -14,7 +15,7 @@ def setup_logging(path: str):
 
     log_dir = os.path.dirname(log_file_path)
     if log_dir:
-        os.makedirs(log_dir, exist_ok = True)
+        os.makedirs(log_dir, exist_ok=True)
 
     logging_config["handlers"]["file_json"]["filename"] = log_file_path
 

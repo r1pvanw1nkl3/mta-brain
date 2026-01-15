@@ -1,9 +1,11 @@
-from psycopg_pool import ConnectionPool
-from psycopg.rows import dict_row
 import logging
 import time
 
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+
 logger = logging.getLogger(__name__)
+
 
 def create_db_pool(connection_url: str):
     """
@@ -13,9 +15,10 @@ def create_db_pool(connection_url: str):
         conninfo=connection_url,
         min_size=2,
         max_size=10,
-        kwargs={"row_factory": dict_row}
+        kwargs={"row_factory": dict_row},
     )
     return pool
+
 
 def wait_for_db(pool):
     retries = 5
@@ -26,7 +29,7 @@ def wait_for_db(pool):
                 conn.execute("SELECT 1")
             logger.info("Database is ready.")
             return
-        except Exception as e:
+        except Exception:
             logger.warning(f"Database is not ready. {retries} retries remaining.")
             retry_count += 1
             time.sleep(2)

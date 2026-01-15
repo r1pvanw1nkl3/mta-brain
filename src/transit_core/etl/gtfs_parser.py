@@ -1,10 +1,12 @@
-import io
-import zipfile
-import logging
 import contextlib
+import io
+import logging
+import zipfile
+
 from . import db_loader
 
 logger = logging.getLogger(__name__)
+
 
 def process_gtfs_zip(pool, zip_file_path: str, schema: str = "public"):
     """
@@ -12,14 +14,16 @@ def process_gtfs_zip(pool, zip_file_path: str, schema: str = "public"):
     """
     logger.info(f"Loading {zip_file_path} into schema {schema}")
 
-    with zipfile.ZipFile(zip_file_path, 'r') as zip:
+    with zipfile.ZipFile(zip_file_path, "r") as zip:
         with contextlib.ExitStack() as stack:
             data_map = {}
             for filename in zip.namelist():
-                if filename.endswith('.txt'):
+                if filename.endswith(".txt"):
                     table_name = filename[:-4]
                     bin_file = stack.enter_context(zip.open(filename))
-                    txt_file = stack.enter_context(io.TextIOWrapper(bin_file, encoding='utf-8'))
+                    txt_file = stack.enter_context(
+                        io.TextIOWrapper(bin_file, encoding="utf-8")
+                    )
                     data_map[table_name] = txt_file
 
             try:

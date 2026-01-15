@@ -1,20 +1,24 @@
-from urllib import request
-from urllib.error import URLError, HTTPError
-from transit_core.config import get_settings
 import logging
 import os
+from urllib import request
+from urllib.error import HTTPError, URLError
+
+from transit_core.config import get_settings
 
 logger = logging.getLogger(__name__)
+
 
 def get_regular_feed():
     """Downloads the regular GTFS feed."""
     settings = get_settings()
     return _retrieve_feed("gtfs_subway.zip", settings.gtfs_static_url)
 
+
 def get_supplemented_feed():
     """Downloads the supplemented GTFS feed."""
     settings = get_settings()
     return _retrieve_feed("gtfs_supplemented.zip", settings.gtfs_supplemented_url)
+
 
 def _retrieve_feed(file_name: str, url: str):
     """
