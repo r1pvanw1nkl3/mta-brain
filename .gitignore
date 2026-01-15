@@ -23,3 +23,11 @@ Thumbs.db
 
 #env
 .env
+
+.clj-kondo/
+
+.lsp/
+
+.pytest_cache/
+
+.ruff_cache/
