@@ -46,3 +46,7 @@ ignore = []
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[project.scripts]
+reload-gtfs = "transit_core.etl.etl_runner:run_reload"
+reload-all-gtfs = "transit_core.etl.etl_runner:reload_all"

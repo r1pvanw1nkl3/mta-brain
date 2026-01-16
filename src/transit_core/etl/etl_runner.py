@@ -1,9 +1,8 @@
 import logging
 import sys
 
-from psycopg_pool import ConnectionPool
-
 from transit_core.config import get_settings
+from transit_core.db import create_db_pool, wait_for_db
 from transit_core.etl.gtfs_download import get_regular_feed, get_supplemented_feed
 from transit_core.etl.gtfs_parser import process_gtfs_zip
 
@@ -13,7 +12,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_full_reload(all=False):
+def reload_all():
+    run_reload(True)
+
+def run_reload(all=False):
     settings = get_settings()
 
     logger.info("Downloading static GTFS feeds")
@@ -24,8 +26,8 @@ def run_full_reload(all=False):
     logger.info("Processing GTFS feeds and loading to DB")
 
     try:
-        # We create a temporary pool for this operation
-        with ConnectionPool(settings.etl_database_url) as pool:
+        with create_db_pool(settings.etl_database_url) as pool:
+            wait_for_db(pool)
             if all:
                 logger.info("Loading regualr data")
                 process_gtfs_zip(pool, regular_file, schema="public")
@@ -41,4 +43,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1].upper() == "ALL":
             all = True
-    run_full_reload(all)
+    run_reload(all)
