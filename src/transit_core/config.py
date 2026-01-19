@@ -16,8 +16,10 @@ class Settings(BaseSettings):
     etl_db_user: str
     etl_db_password: str
 
-    app_db_user: str = "app_user"
+    app_db_user: str
     app_db_password: str
+
+    redis_url: str = "redis://localhost:6379/0"
 
     gtfs_static_url: str = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
     gtfs_supplemented_url: str = (

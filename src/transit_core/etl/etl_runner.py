@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def reload_all():
     run_reload(True)
 
+
 def run_reload(all=False):
     settings = get_settings()
 
