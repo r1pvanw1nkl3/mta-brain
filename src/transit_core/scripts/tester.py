@@ -1,6 +1,9 @@
+import time
+
 import transit_core.config as cfg
 import transit_core.core.repository as rp
 import transit_core.db as db
+import transit_core.redis_client as rc
 
 
 def main():
@@ -13,6 +16,15 @@ def main():
 
         for stop in sorted_by_name:
             print(stop.stop_name)
+
+
+def redis_test():
+    with rc.get_redis_client() as r:
+        r.set("test", "abbadabba", 5)
+        print(r.ttl("test"))
+        print(r.get("test"))
+        time.sleep(5)
+        print(r.get("test"))
 
 
 if __name__ == "__main__":

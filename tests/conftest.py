@@ -11,6 +11,7 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("ETL_DB_USER", "test_user")
     monkeypatch.setenv("ETL_DB_PASSWORD", "test_pass")
     monkeypatch.setenv("APP_DB_PASSWORD", "dummy")
+    monkeypatch.setenv("APP_DB_USER", "test_user")
 
     get_settings.cache_clear()
 
