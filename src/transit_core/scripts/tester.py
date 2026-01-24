@@ -4,6 +4,7 @@ import time
 import requests
 from google.protobuf.json_format import MessageToDict
 
+import services.subway_live_hydrator.feed_parser as fp
 import transit_core.config as cfg
 import transit_core.core.repository as rp
 import transit_core.db as db
@@ -32,8 +33,7 @@ def redis_test():
         print(r.get("test"))
 
 
-def download_raw_feed(filename="mta_dump.json"):
-    url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
+def download_raw_feed(url, filename="mta_dump.json"):
     try:
         # Fetching the data
         response = requests.get(url)
@@ -55,5 +55,14 @@ def download_raw_feed(filename="mta_dump.json"):
         print(f"Error fetching data: {e}")
 
 
+def gtfs_load_test():
+    settings = cfg.get_settings()
+    feed = settings.gtfs_live_urls[4]
+    var = fp.fetch_live_feed(feed)
+    with open("model_dump.json", "w") as file:
+        file.write(var.model_dump_json(indent=4))
+    download_raw_feed(feed)
+
+
 if __name__ == "__main__":
-    download_raw_feed()
+    gtfs_load_test()

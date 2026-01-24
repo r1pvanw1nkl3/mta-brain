@@ -3,8 +3,9 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # Static GTFS Models
+
+
 class StationSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,6 +20,8 @@ class Station(StationSummary):
 
 
 # GTFS models
+
+
 class TripScheduleRelationship(IntEnum):
     SCHEDULED = 0
     ADDED = 1
@@ -32,13 +35,13 @@ class Direction(IntEnum):
 
 
 class TimeUpdate(BaseModel):
-    delay: int
+    delay: Optional[int] = None
     time: int
-    uncertainty: int
+    uncertainty: Optional[int] = None
 
 
 class StopTimeUpdate(BaseModel):
-    stop_sequence: int
+    stop_sequence: Optional[int] = None
     stop_id: str
     schedule_relationship: TripScheduleRelationship = TripScheduleRelationship.SCHEDULED
     arrival_time: Optional[TimeUpdate] = Field(None, alias="arrival")
@@ -48,15 +51,32 @@ class StopTimeUpdate(BaseModel):
 class Trip(BaseModel):
     trip_id: str
     start_date: int
-    schedule_relationship: TripScheduleRelationship
+    schedule_relationship: Optional[TripScheduleRelationship] = None
     route_id: str
-    direction_id: Direction
+    direction_id: Optional[Direction] = None
 
 
 class Vehicle(BaseModel):
     trip: Trip
-    id: int
-    current_stop_sequence: int
-    current_status: str
+    current_stop_sequence: Optional[int] = None
+    current_status: Optional[int] = None
     timestamp: str
     stop_id: str
+
+
+class TripUpdate(BaseModel):
+    trip: Trip
+    stop_time_update: Optional[list[StopTimeUpdate]] = None
+
+
+class Entity(BaseModel):
+    id: str
+    is_deleted: bool = False
+    timestamp: Optional[str] = None
+    trip_update: Optional[TripUpdate] = None
+    vehicle: Optional[Vehicle] = None
+
+
+class Feed(BaseModel):
+    header: dict
+    entity: list[Entity]

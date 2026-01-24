@@ -6,9 +6,6 @@ from services.static_etl.gtfs_parser import process_gtfs_zip
 from transit_core.config import get_settings
 from transit_core.db import create_db_pool, wait_for_db
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
