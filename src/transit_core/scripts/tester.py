@@ -5,11 +5,16 @@ import requests
 from google.protobuf.json_format import MessageToDict
 
 import services.subway_live_hydrator.feed_parser as fp
+import services.subway_live_hydrator.runner as runner
+import services.subway_live_hydrator.state_manager as sm
 import transit_core.config as cfg
 import transit_core.core.repository as rp
 import transit_core.db as db
 import transit_core.redis_client as rc
 from transit_core.core.protos import gtfs_realtime_pb2
+from transit_core.transit_core_logging import setup_logging
+
+setup_logging()
 
 
 def main():
@@ -57,12 +62,30 @@ def download_raw_feed(url, filename="mta_dump.json"):
 
 def gtfs_load_test():
     settings = cfg.get_settings()
-    feed = settings.gtfs_live_urls[4]
-    var = fp.fetch_live_feed(feed)
-    with open("model_dump.json", "w") as file:
-        file.write(var.model_dump_json(indent=4))
-    download_raw_feed(feed)
+    feed = settings.gtfs_live_urls[7]
+    fp.fetch_raw_feed(feed)
+    # feed = fp.validate_feed(raw_feed)
+    # with open("model_dump.json", "w") as file:
+    #     file.write(feed.model_dump_json(indent=4))
+
+
+def gtfs_to_redis_test():
+    settings = cfg.get_settings()
+    redis_client = rc.RedisClient(
+        host=settings.redis_host,
+        port=settings.redis_port,
+        db=settings.redis_db,
+        max_connections=settings.redis_max_connections,
+    )
+
+    feed_url = settings.gtfs_live_urls[7]
+    feed = fp.fetch_raw_feed(feed_url)
+    sm.update_redis_state(feed=feed, redis_client=redis_client)
+
+
+def test_runner():
+    runner.runner()
 
 
 if __name__ == "__main__":
-    gtfs_load_test()
+    test_runner()

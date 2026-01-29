@@ -4,7 +4,7 @@ import logging.config
 import os
 
 
-def setup_logging(path: str):
+def setup_logging(path: str = "logs/app.log"):
     with open("logging.json", "r") as f:
         logging_config = json.load(f)
 

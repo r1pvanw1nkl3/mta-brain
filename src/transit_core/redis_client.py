@@ -1,32 +1,41 @@
 import redis
 
-from transit_core.core.models import TripUpdate
 
-from .config import get_settings
+class RedisClient:
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 6379,
+        db: int = 0,
+        max_connections: int = 20,
+    ):
+        self._pool = redis.ConnectionPool(
+            host=host,
+            port=port,
+            db=db,
+            decode_responses=True,
+            max_connections=max_connections,
+        )
+        self.client = redis.Redis(connection_pool=self._pool)
 
-
-class RedisState:
-    def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0):
-        self.client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+    def get_header_timestamp_key(self, feed_url: str) -> str:
+        return f"feed_timestamp:{feed_url}"
 
     def get_arrival_key(self, stop_id: str) -> str:
         return f"arrivals:{stop_id}"
 
     def get_trip_key(self, trip_id: str) -> str:
-        return f"trip:{trip_id}"
+        return f"trip_state:{trip_id}"
 
-    def update_live_state(self, trip_updates: list[TripUpdate], ttl: int = 90):
-        with self.client.pipeline(transaction=False) as pipe:
-            for trip in trip_updates:
-                trip_key = self.get_trip_key(trip.trip_id)
-                pipe.set(trip_key, trip.model_dump_json(), ex=ttl)
+    def get_redis_pipeline(self):
+        return self.client.pipeline()
 
-                for stop in trip.stops:
-                    arrival_key = self.get_arrival_key(stop.stop_id)
-                    pipe.zadd(arrival_key, {trip.trip_id: stop.arrival_time})
-                    pipe.expire(arrival_key, ttl)
+    def is_feed_new(self, feed_url: str, new_timestamp: int) -> bool:
+        key = self.get_header_timestamp_key(feed_url)
+        last_ts = self.client.get(key)
 
+        if last_ts and int(last_ts) >= new_timestamp:
+            return False
 
-def get_redis_client():
-    settings = get_settings()
-    return redis.from_url(settings.redis_url, decode_responses=True)
+        self.client.set(key, new_timestamp, ex=300)
+        return True
