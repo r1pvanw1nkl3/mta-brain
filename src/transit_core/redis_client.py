@@ -8,12 +8,13 @@ class RedisClient:
         port: int = 6379,
         db: int = 0,
         max_connections: int = 20,
+        decode_responses: bool = True,
     ):
         self._pool = redis.ConnectionPool(
             host=host,
             port=port,
             db=db,
-            decode_responses=True,
+            decode_responses=decode_responses,
             max_connections=max_connections,
         )
         self.client = redis.Redis(connection_pool=self._pool)

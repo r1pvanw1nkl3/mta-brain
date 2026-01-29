@@ -60,16 +60,18 @@ def download_raw_feed(url, filename="mta_dump.json"):
         print(f"Error fetching data: {e}")
 
 
-def gtfs_load_test():
+def gtfs_load_test(key):
     settings = cfg.get_settings()
-    feed = settings.gtfs_live_urls[7]
-    fp.fetch_raw_feed(feed)
-    # feed = fp.validate_feed(raw_feed)
-    # with open("model_dump.json", "w") as file:
-    #     file.write(feed.model_dump_json(indent=4))
+    feed = settings.gtfs_live_urls[key]
+    raw_feed = fp.fetch_raw_feed(feed)
+    feed = fp.validate_feed(raw_feed)
+    with open("model_dump.json", "w") as file:
+        file.write(feed.model_dump_json(indent=4))
+    with open("raw_dump.json", "w") as file:
+        json.dump(raw_feed, file, indent=4)
 
 
-def gtfs_to_redis_test():
+def gtfs_to_redis_test(key):
     settings = cfg.get_settings()
     redis_client = rc.RedisClient(
         host=settings.redis_host,
@@ -78,9 +80,10 @@ def gtfs_to_redis_test():
         max_connections=settings.redis_max_connections,
     )
 
-    feed_url = settings.gtfs_live_urls[7]
+    feed_url = settings.gtfs_live_urls[key]
     feed = fp.fetch_raw_feed(feed_url)
-    sm.update_redis_state(feed=feed, redis_client=redis_client)
+    parsed_feed = fp.validate_feed(feed)
+    sm.update_redis_state(feed=parsed_feed, redis_client=redis_client)
 
 
 def test_runner():
@@ -88,4 +91,6 @@ def test_runner():
 
 
 if __name__ == "__main__":
+    # gtfs_load_test("123")
+    # gtfs_to_redis_test("123")
     test_runner()
