@@ -26,6 +26,7 @@ class StationRepository:
             )
         except Exception as e:
             logger.error(f"Failed to retrieve station: {e}")
+            raise e
 
         return Station(**row)
 

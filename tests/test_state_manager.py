@@ -25,7 +25,7 @@ def create_mock_feed(num_stops=2):
 def test_update_redis_state_pivot_logic():
     mock_redis = MagicMock()
     mock_pipe = MagicMock()
-    mock_redis.get_redis_pipeline.return_value.__enter__.return_value = mock_pipe
+    mock_redis.pipeline_scope.return_value.__enter__.return_value = mock_pipe
 
     num_stops = 3
     feed = create_mock_feed(num_stops=num_stops)
@@ -42,7 +42,7 @@ def test_update_redis_state_pivot_logic():
 def test_update_redis_state_janitor_call():
     mock_redis = MagicMock()
     mock_pipe = MagicMock()
-    mock_redis.get_redis_pipeline.return_value.__enter__.return_value = mock_pipe
+    mock_redis.pipeline_scope.return_value.__enter__.return_value = mock_pipe
 
     feed = create_mock_feed(num_stops=1)
 
