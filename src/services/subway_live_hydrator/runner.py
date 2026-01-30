@@ -23,7 +23,7 @@ redis_client = rc.RedisClient(
 
 def runner():
     urls = settings.gtfs_live_urls
-
+    logger.info(f"Starting runner for the following feeds: {' '.join(urls.keys())}")
     with ThreadPoolExecutor(max_workers=len(urls)) as executor:
         for key in urls:
             executor.submit(worker, key)

@@ -16,6 +16,7 @@ def fetch_raw_feed(feed_url: str):
     cfg = get_settings()
     for attempt in range(0, cfg.gtfs_realtime_retries):
         try:
+            logger.info(f"Attempting to fetch feed {feed_url}")
             response = requests.get(feed_url, timeout=cfg.gtfs_timeout)
             response.raise_for_status()
             feed = pb.FeedMessage()

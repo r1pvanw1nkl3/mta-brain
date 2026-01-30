@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import redis
 
 
@@ -19,6 +21,16 @@ class RedisClient:
         )
         self.client = redis.Redis(connection_pool=self._pool)
 
+    @contextmanager
+    def pipeline_scope(self):
+        pipe = self.client.pipeline()
+        try:
+            yield pipe
+            pipe.execute()
+        except Exception as e:
+            pipe.reset()
+            raise e
+
     def get_header_timestamp_key(self, feed_url: str) -> str:
         return f"feed_timestamp:{feed_url}"
 
@@ -27,9 +39,6 @@ class RedisClient:
 
     def get_trip_key(self, trip_id: str) -> str:
         return f"trip_state:{trip_id}"
-
-    def get_redis_pipeline(self):
-        return self.client.pipeline()
 
     def is_feed_new(self, feed_url: str, new_timestamp: int) -> bool:
         key = self.get_header_timestamp_key(feed_url)
