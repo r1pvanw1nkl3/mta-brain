@@ -1,6 +1,9 @@
 from contextlib import contextmanager
+from logging import getLogger
 
 import redis
+
+logger = getLogger(__name__)
 
 
 class RedisClient:
@@ -12,6 +15,7 @@ class RedisClient:
         max_connections: int = 20,
         decode_responses: bool = True,
     ):
+        logger.info("Creating redis connection pool")
         self._pool = redis.ConnectionPool(
             host=host,
             port=port,
@@ -28,6 +32,7 @@ class RedisClient:
             yield pipe
             pipe.execute()
         except Exception as e:
+            logger.error(f"Redis pipeline execution failed: {e}")
             pipe.reset()
             raise e
 
@@ -45,7 +50,12 @@ class RedisClient:
         last_ts = self.client.get(key)
 
         if last_ts and int(last_ts) >= new_timestamp:
+            logger.info(
+                f"""Feed {feed_url} is stale.
+                Current ts: {new_timestamp}, cached: {last_ts}"""
+            )
             return False
 
+        logger.info(f"Feed {feed_url} is new. Updating cache with ts: {new_timestamp}")
         self.client.set(key, new_timestamp, ex=300)
         return True

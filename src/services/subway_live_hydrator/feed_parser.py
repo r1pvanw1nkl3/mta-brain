@@ -4,6 +4,7 @@ import time
 import requests
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
+from pydantic import ValidationError
 
 import transit_core.core.models as models
 import transit_core.core.protos.gtfs_realtime_pb2 as pb
@@ -19,11 +20,18 @@ def fetch_raw_feed(feed_url: str):
             logger.info(f"Attempting to fetch feed {feed_url}")
             response = requests.get(feed_url, timeout=cfg.gtfs_timeout)
             response.raise_for_status()
+            logger.info(
+                f"""Fetched feed {feed_url}. Status: {response.status_code},
+                Size: {len(response.content)} bytes"""
+            )
             feed = pb.FeedMessage()
             feed.ParseFromString(response.content)
-            return MessageToDict(
+            feed_dict = MessageToDict(
                 feed, preserving_proto_field_name=True, use_integers_for_enums=True
             )
+            entity_count = len(feed_dict.get("entity", []))
+            logger.info(f"Parsed feed {feed_url} with {entity_count} entities")
+            return feed_dict
         except (requests.RequestException, DecodeError, requests.HTTPError) as e:
             error_type = type(e).__name__
             logger.error(f"Error on attempt {attempt + 1}: {error_type}")
@@ -38,4 +46,9 @@ def fetch_raw_feed(feed_url: str):
 
 
 def validate_feed(feed_dict):
-    return models.Feed.model_validate(feed_dict)
+    logger.info("Attempting to validate feed.")
+    try:
+        return models.Feed.model_validate(feed_dict)
+    except ValidationError as e:
+        logger.error(f"Feed validation failed: {e}")
+        raise e

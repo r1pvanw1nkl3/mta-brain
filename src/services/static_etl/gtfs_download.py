@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from urllib import request
 from urllib.error import HTTPError, URLError
 
@@ -26,12 +27,16 @@ def _retrieve_feed(file_name: str, url: str):
     """
     logger.info(f"Downloading feed from {url}")
     try:
+        start_time = time.time()
         settings = get_settings()
         target_dir = os.path.join(settings.project_root, settings.gtfs_static_path)
         os.makedirs(target_dir, exist_ok=True)
         full_file_path = os.path.join(target_dir, file_name)
         request.urlretrieve(url, full_file_path)
-        logger.info(f"Successfully downloaded {file_name} from {url}")
+        duration = time.time() - start_time
+        file_size = os.path.getsize(full_file_path)
+        logger.info(f"""Successfully downloaded {file_name} from {url}.
+                    Size: {file_size} bytes. Time: {duration:.2f}s""")
         return full_file_path
 
     except (HTTPError, URLError) as e:
