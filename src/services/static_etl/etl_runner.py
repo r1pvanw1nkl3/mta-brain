@@ -6,7 +6,9 @@ from services.static_etl.gtfs_download import get_regular_feed, get_supplemented
 from services.static_etl.gtfs_parser import process_gtfs_zip
 from transit_core.config import get_settings
 from transit_core.db import create_db_pool, wait_for_db
+from transit_core.transit_core_logging import setup_logging
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

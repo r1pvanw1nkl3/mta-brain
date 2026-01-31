@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [project]
 name = "mta-brain"
 version = "0.1.0"
@@ -28,7 +35,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["transit_core*"]  # Explicitly tell it to look for your package
+include = ["transit_core*", "services*"]  # Explicitly tell it to look for your package
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -56,3 +63,4 @@ indent-style = "space"
 [project.scripts]
 reload-gtfs = "services.static_etl.etl_runner:run_reload"
 reload-all-gtfs = "services.static_etl.etl_runner:reload_all"
+live-hydrator = "services.subway_live_hydrator.runner:runner"
