@@ -1,3 +1,4 @@
+import time
 from unittest.mock import ANY, MagicMock
 
 import transit_core.core.models as md
@@ -38,15 +39,16 @@ def test_trip_repository_get_trip_status():
 
 
 def test_stop_repository_update_departures_board():
+    current_time = int(time.time())
     mock_state_store = MagicMock()
     repo = StopRepository(state_store=mock_state_store)
 
     board = md.StopDepartureBoard(stop_id="S1", departures={"T1": 1000, "T2": 2000})
 
-    repo.update_departures_board(board)
+    repo.update_departures_board(board, current_time)
 
     mock_state_store.sync_set.assert_called_once_with(
-        Keys.departures("S1"), {"T1": 1000, "T2": 2000}, ANY
+        Keys.departures("S1"), {"T1": 1000, "T2": 2000}, current_time, ANY
     )
 
 

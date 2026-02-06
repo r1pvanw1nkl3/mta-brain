@@ -36,14 +36,14 @@ class RedisStateStore:
     def _get_client(self):
         return self._active_pipe or self.redis.client
 
-    def set_kv(self, key: str, value: str, expiry: int = 3600) -> None:
+    def set_kv(self, key: str, value: str, expiry) -> None:
         self._get_client().set(key, value, ex=expiry)
 
     def get_kv(self, key: str) -> str | None:
         return self.redis.client.get(key)
 
-    def sync_set(self, key: str, mapping: Mapping, expiry: int = 3600) -> None:
-        self._get_client().delete(key)
+    def sync_set(self, key: str, mapping: Mapping, min_score: int, expiry) -> None:
+        self._get_client().zremrangebyscore(key, 0, min_score)
         if mapping:
             self._get_client().zadd(key, mapping)
             self._get_client().expire(key, expiry)

@@ -2,9 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from pydantic import ValidationError
 
 from services.subway_live_hydrator import feed_parser
+from transit_core.core.exceptions import FeedFetchError, FeedParseError
 
 
 def test_fetch_raw_feed_success(mock_env_vars):
@@ -72,13 +72,13 @@ def test_fetch_raw_feed_retry_success(mock_env_vars):
 
 
 def test_fetch_raw_feed_exhausted_retries(mock_env_vars):
-    """Test that it returns None after retries are exhausted."""
+    """Test that it raises FeedFetchError after retries are exhausted."""
     with patch("requests.get") as mock_get, patch("time.sleep"):
         mock_get.side_effect = requests.ConnectionError
 
-        result = feed_parser.fetch_raw_feed("http://fake-url.com")
+        with pytest.raises(FeedFetchError):
+            feed_parser.fetch_raw_feed("http://fake-url.com")
 
-        assert result is None
         # Default retries is 3
         assert mock_get.call_count == 3
 
@@ -96,5 +96,5 @@ def test_validate_feed_failure():
     """Test validation with invalid data."""
     bad_data = {"entity": [{"id": "1", "trip_update": "invalid"}]}
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(FeedParseError):
         feed_parser.validate_feed(bad_data)

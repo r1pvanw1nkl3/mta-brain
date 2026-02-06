@@ -36,3 +36,4 @@ mta_dump.json
 model_dump.json
 raw_dump.json
 .gemini/
+src/transit_core/scripts/86th_st_arrivals.py

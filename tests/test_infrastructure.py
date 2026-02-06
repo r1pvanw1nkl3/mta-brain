@@ -1,3 +1,4 @@
+import time
 from unittest.mock import MagicMock
 
 from transit_core.infrastructure.state_store import RedisStateStore
@@ -17,7 +18,7 @@ def test_redis_state_store_batch_session():
     with store.batch_session():
         # Inside batch session, _get_client should return the pipe
         assert store._get_client() == mock_pipe
-        store.set_kv("test_key", "test_value")
+        store.set_kv("test_key", "test_value", 3600)
         mock_pipe.set.assert_called_once_with("test_key", "test_value", ex=3600)
 
     # After batch session, it should be back to redis.client
@@ -40,12 +41,13 @@ def test_redis_state_store_get_kv():
 
 
 def test_redis_state_store_sync_set():
+    current_time = int(time.time())
     mock_redis = MagicMock()
     store = RedisStateStore(redis_client=mock_redis)
     mapping = {"a": 1, "b": 2}
-    store.sync_set("key", mapping, 500)
+    store.sync_set("key", mapping, current_time, 500)
 
-    mock_redis.client.delete.assert_called_once_with("key")
+    mock_redis.client.zremrangebyscore.assert_called_once_with("key", 0, current_time)
     mock_redis.client.zadd.assert_called_once_with("key", mapping)
     mock_redis.client.expire.assert_called_once_with("key", 500)
 

@@ -45,9 +45,12 @@ class StopRepository:
     def __init__(self, state_store: StateStore):
         self.state_store = state_store
 
-    def update_departures_board(self, board: md.StopDepartureBoard):
+    def update_departures_board(self, board: md.StopDepartureBoard, current_time: int):
         self.state_store.sync_set(
-            Keys.departures(board.stop_id), board.departures, config.redis_gtfs_ttl
+            Keys.departures(board.stop_id),
+            board.departures,
+            current_time,
+            config.redis_gtfs_ttl,
         )
 
     def get_departures_board(self, stop_id: str) -> md.StopDepartureBoard | None:

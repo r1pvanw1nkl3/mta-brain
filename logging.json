@@ -6,7 +6,7 @@
       "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     },
     "json_file": {
-      "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+      "class": "pythonjsonlogger.json.JsonFormatter",
       "format": "%(asctime)s %(name)s %(levelname)s %(message)s %(lineno)d"
     }
   },

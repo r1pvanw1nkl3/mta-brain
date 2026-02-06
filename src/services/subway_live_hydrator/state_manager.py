@@ -39,7 +39,7 @@ def hydrate_realtime_data(
                         departures_boards[stop_id][trip_id] = board_time
         for stop_id, departures in departures_boards.items():
             board = md.StopDepartureBoard(stop_id=stop_id, departures=departures)
-            stop_repo.update_departures_board(board)
+            stop_repo.update_departures_board(board, current_time)
 
     logger.debug(
         "Hydration completed",
