@@ -3,6 +3,8 @@ from logging import getLogger
 
 import redis
 
+from transit_core.core.exceptions import CacheError
+
 logger = getLogger(__name__)
 
 
@@ -15,7 +17,10 @@ class RedisClient:
         max_connections: int = 20,
         decode_responses: bool = True,
     ):
-        logger.info("Creating redis connection pool")
+        logger.info(
+            "Creating redis connection pool",
+            extra={"host": host, "port": port, "db": db},
+        )
         self._pool = redis.ConnectionPool(
             host=host,
             port=port,
@@ -31,7 +36,11 @@ class RedisClient:
         try:
             yield pipe
             pipe.execute()
-        except Exception as e:
-            logger.error(f"Redis pipeline execution failed: {e}")
+        except redis.RedisError as e:
+            logger.exception("Redis pipeline execution failed")
             pipe.reset()
-            raise e
+            raise CacheError(f"Redis pipeline failed: {e}") from e
+        except Exception:
+            logger.exception("Unexpected error during Redis pipeline execution")
+            pipe.reset()
+            raise

@@ -18,14 +18,22 @@ def reload_all():
 
 def run_reload(all=False):
     settings = get_settings()
-    logger.info(f"Starting ETL reload with all={all}")
+    logger.info("Starting ETL reload", extra={"all_feeds": all})
 
     logger.info("Downloading static GTFS feeds")
     start_download = time.time()
-    if all:
-        regular_file = get_regular_feed()
-    supplemented_file = get_supplemented_feed()
-    logger.info(f"Download phase completed in {time.time() - start_download:.2f}s")
+    try:
+        if all:
+            regular_file = get_regular_feed()
+        supplemented_file = get_supplemented_feed()
+    except Exception:
+        logger.exception("Failed to download GTFS feeds")
+        return
+
+    logger.info(
+        "Download phase completed",
+        extra={"elapsed_seconds": round(time.time() - start_download, 2)},
+    )
 
     logger.info("Processing GTFS feeds and loading to DB")
     start_process = time.time()
@@ -34,14 +42,16 @@ def run_reload(all=False):
         with create_db_pool(settings.etl_database_url) as pool:
             wait_for_db(pool)
             if all:
-                logger.info("Loading regualr data")
+                logger.info("Loading regular data")
                 process_gtfs_zip(pool, regular_file, schema="public")
             logger.info("Loading supplemented data")
             process_gtfs_zip(pool, supplemented_file, schema="supplemented")
-        logger.info(f"""Full reload successful.
-                    Processing time: {time.time() - start_process:.2f}s""")
-    except Exception as e:
-        logger.error(f"Reload failed: {e}")
+        logger.info(
+            "Full reload successful",
+            extra={"elapsed_seconds": round(time.time() - start_process, 2)},
+        )
+    except Exception:
+        logger.exception("Reload failed")
 
 
 if __name__ == "__main__":

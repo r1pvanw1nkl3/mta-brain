@@ -42,6 +42,8 @@ def runner():
 def worker(key, trip_repo, stop_repo, state_store):
     urls = settings.gtfs_live_urls
     feed_url = urls[key]
+    from transit_core.core.exceptions import FeedError, StorageError
+
     while True:
         try:
             start_time = time.time()
@@ -59,11 +61,28 @@ def worker(key, trip_repo, stop_repo, state_store):
             elapsed = time.time() - start_time
             sleep_time = max(0, (settings.redis_gtfs_ttl / 3) - elapsed)
 
-            logger.info(f"Hydrated {feed_url} in {elapsed:.2f}s")
+            logger.info(
+                "Hydrated feed",
+                extra={
+                    "feed_key": key,
+                    "feed_url": feed_url,
+                    "elapsed_seconds": round(elapsed, 2),
+                },
+            )
             time.sleep(sleep_time)
 
-        except Exception as e:
-            logger.error(f"Worker failed for {feed_url}: {e}")
+        except (FeedError, StorageError) as e:
+            logger.error(
+                "Known error during worker execution",
+                extra={
+                    "feed_url": feed_url,
+                    "error_type": type(e).__name__,
+                    "error": str(e),
+                },
+            )
+            time.sleep(10)
+        except Exception:
+            logger.exception("Unexpected worker failure", extra={"feed_url": feed_url})
             time.sleep(10)
 
 

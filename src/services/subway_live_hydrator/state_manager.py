@@ -13,11 +13,13 @@ def hydrate_realtime_data(
     state_store = trip_repo.state_store
 
     departures_boards: dict[str, dict[str, int]] = {}
+    trip_updates_count = 0
 
     with state_store.batch_session():
         current_time = int(time.time())
         for entity in feed.entity:
             if entity.trip_update is not None:
+                trip_updates_count += 1
                 trip_update = entity.trip_update
                 trip_repo.update_trip_status(trip_update)
                 trip_id = trip_update.trip.trip_id
@@ -38,3 +40,11 @@ def hydrate_realtime_data(
         for stop_id, departures in departures_boards.items():
             board = md.StopDepartureBoard(stop_id=stop_id, departures=departures)
             stop_repo.update_departures_board(board)
+
+    logger.debug(
+        "Hydration completed",
+        extra={
+            "trip_updates_processed": trip_updates_count,
+            "stops_updated": len(departures_boards),
+        },
+    )

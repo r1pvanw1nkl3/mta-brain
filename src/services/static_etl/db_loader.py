@@ -22,7 +22,9 @@ def truncate_tables(conn: Connection, schema: str = "public"):
     tables_with_schema = [f"{schema}.{t}" for t in GTFS_TABLES]
     tables_sql = ", ".join(tables_with_schema)
     with conn.cursor() as cur:
-        logger.info(f"Truncating tables in {schema}")
+        logger.info(
+            "Truncating tables", extra={"schema": schema, "tables": GTFS_TABLES}
+        )
         cur.execute(f"TRUNCATE {tables_sql} CASCADE")
 
 
@@ -30,7 +32,10 @@ def load_table(cur: Cursor, table_name: str, file_obj: IO, schema: str):
     headers = file_obj.readline()
 
     if not headers:
-        logger.warning(f"No rows found for table {str}")
+        logger.warning(
+            "No rows found for table",
+            extra={"table_name": table_name, "schema": schema},
+        )
 
     reader = csv.reader([headers])
     columns = next(reader)
@@ -56,16 +61,24 @@ def load_table(cur: Cursor, table_name: str, file_obj: IO, schema: str):
 
 
 def load_all(conn: Connection, data_map: Dict[str, IO], schema: str):
+    from transit_core.core.exceptions import DatabaseError
+
     with conn.transaction():
         truncate_tables(conn, schema)
         for table_name in GTFS_TABLES:
             if table_name in data_map:
                 try:
-                    logger.info(f"Loading {table_name} into schema {schema}")
+                    logger.info(
+                        "Loading table",
+                        extra={"table_name": table_name, "schema": schema},
+                    )
                     with conn.cursor() as cur:
                         load_table(cur, table_name, data_map[table_name], schema)
                 except Exception as e:
-                    logger.error(
-                        f"Error occurred during load of table {table_name}: {e}"
+                    logger.exception(
+                        "Error occurred during load of table",
+                        extra={"table_name": table_name, "schema": schema},
                     )
-                    raise
+                    raise DatabaseError(
+                        f"Failed to load table {table_name}: {e}"
+                    ) from e

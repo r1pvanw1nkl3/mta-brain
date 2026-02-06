@@ -12,7 +12,9 @@ def process_gtfs_zip(pool, zip_file_path: str, schema: str = "public"):
     """
     Parses and loads the GTFS zip into the db.
     """
-    logger.info(f"Loading {zip_file_path} into schema {schema}")
+    logger.info(
+        "Processing GTFS zip", extra={"zip_file": zip_file_path, "schema": schema}
+    )
 
     with zipfile.ZipFile(zip_file_path, "r") as zip:
         with contextlib.ExitStack() as stack:
@@ -29,7 +31,11 @@ def process_gtfs_zip(pool, zip_file_path: str, schema: str = "public"):
             try:
                 with pool.connection() as conn:
                     db_loader.load_all(conn, data_map, schema)
-                logger.info("Successfully proccessed the GTFS feed.")
-            except Exception as e:
-                logger.error(f"An error occurred when processing GTFS feed: {e}")
+                logger.info(
+                    "Successfully processed GTFS feed", extra={"schema": schema}
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to process GTFS feed", extra={"schema": schema}
+                )
                 raise
