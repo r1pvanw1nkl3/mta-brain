@@ -19,6 +19,14 @@ class Station(StationSummary):
     parent_station: Optional[str]
 
 
+# State Models
+
+
+class StopDepartureBoard(BaseModel):
+    stop_id: str
+    departures: dict[str, int]
+
+
 # GTFS models
 
 

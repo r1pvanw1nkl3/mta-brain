@@ -6,33 +6,40 @@ import services.subway_live_hydrator.feed_parser as fp
 import services.subway_live_hydrator.state_manager as sm
 import transit_core.redis_client as rc
 from transit_core.config import get_settings
+from transit_core.core.repository import Keys, StopRepository, TripRepository
+from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.transit_core_logging import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
-settings = get_settings()
 
-redis_client = rc.RedisClient(
-    host=settings.redis_host,
-    port=settings.redis_port,
-    db=settings.redis_db,
-    max_connections=settings.redis_max_connections,
-)
+settings = get_settings()
 
 
 def runner():
+    redis_client = rc.RedisClient(
+        host=settings.redis_host,
+        port=settings.redis_port,
+        db=settings.redis_db,
+        max_connections=settings.redis_max_connections,
+    )
+
+    state_store = RedisStateStore(redis_client=redis_client)
+    trip_repo = TripRepository(state_store=state_store)
+    stop_repo = StopRepository(state_store=state_store)
+
     urls = settings.gtfs_live_urls
     logger.info(f"Starting runner for the following feeds: {' '.join(urls.keys())}")
     with ThreadPoolExecutor(max_workers=len(urls)) as executor:
         for key in urls:
-            executor.submit(worker, key)
+            executor.submit(worker, key, trip_repo, stop_repo, state_store)
 
         while True:
             time.sleep(1)
 
 
-def worker(key):
+def worker(key, trip_repo, stop_repo, state_store):
     urls = settings.gtfs_live_urls
     feed_url = urls[key]
     while True:
@@ -41,11 +48,13 @@ def worker(key):
 
             raw_feed = fp.fetch_raw_feed(feed_url)
             if raw_feed is not None:
-                if redis_client.is_feed_new(
-                    key, int(raw_feed.get("header", {}).get("timestamp", 0))
+                if state_store.check_and_update_timestamp(
+                    Keys.feed(key), int(raw_feed.get("header", {}).get("timestamp", 0))
                 ):
                     feed = fp.validate_feed(raw_feed)
-                    sm.update_redis_state(feed, redis_client)
+                    sm.hydrate_realtime_data(
+                        feed=feed, trip_repo=trip_repo, stop_repo=stop_repo
+                    )
 
             elapsed = time.time() - start_time
             sleep_time = max(0, (settings.redis_gtfs_ttl / 3) - elapsed)

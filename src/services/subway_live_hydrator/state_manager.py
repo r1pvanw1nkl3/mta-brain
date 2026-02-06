@@ -2,48 +2,39 @@ import logging
 import time
 
 import transit_core.core.models as md
-import transit_core.redis_client as rc
-from transit_core.config import get_settings
+from transit_core.core.repository import StopRepository, TripRepository
 
 logger = logging.getLogger(__name__)
 
 
-def update_redis_state(feed: md.Feed, redis_client: rc.RedisClient):
-    now = int(time.time())
-    cfg = get_settings()
+def hydrate_realtime_data(
+    feed: md.Feed, trip_repo: TripRepository, stop_repo: StopRepository
+) -> None:
+    state_store = trip_repo.state_store
 
-    trip_count = 0
-    stop_update_count = 0
-    start_time = time.time()
+    departures_boards: dict[str, dict[str, int]] = {}
 
-    with redis_client.pipeline_scope() as pipe:
+    with state_store.batch_session():
+        current_time = int(time.time())
         for entity in feed.entity:
             if entity.trip_update is not None:
-                trip_count += 1
-                trip_id = entity.trip_update.trip.trip_id
-                trip_data = entity.trip_update.model_dump_json()
-                logger.info(f"Adding trip ID to cache: {trip_id}")
-                pipe.set(
-                    redis_client.get_trip_key(trip_id),
-                    trip_data,
-                    ex=cfg.redis_gtfs_ttl,
-                )
-                stop_time_update = entity.trip_update.stop_time_update
-                if stop_time_update is not None:
-                    for stu in stop_time_update:
-                        stop_update_count += 1
-                        stop_id = stu.stop_id
-                        arrival_key = redis_client.get_arrival_key(stop_id)
-                        if stu.arrival_time:
-                            arrival_time = stu.arrival_time.time
-                        elif stu.departure_time:
-                            arrival_time = stu.departure_time.time
+                trip_update = entity.trip_update
+                trip_repo.update_trip_status(trip_update)
+                trip_id = trip_update.trip.trip_id
+                if trip_update.stop_time_update:
+                    for stop_time in trip_update.stop_time_update:
+                        if stop_time.arrival_time:
+                            board_time = stop_time.arrival_time.time
+                        elif stop_time.departure_time:
+                            board_time = stop_time.departure_time.time
                         else:
                             continue
-                        logger.info(f"Adding trip {trip_id} to stop {stop_id}")
-                        pipe.zremrangebyscore(arrival_key, 0, now)
-                        pipe.zadd(arrival_key, {trip_id: arrival_time})
-                        pipe.expire(arrival_key, cfg.redis_gtfs_ttl)
-
-    logger.info(f"""Processed {trip_count} trips and {stop_update_count} stop updates
-                in {time.time() - start_time:.4f}s""")
+                        if board_time < current_time:
+                            continue
+                        stop_id = stop_time.stop_id
+                        if stop_id not in departures_boards:
+                            departures_boards[stop_id] = {}
+                        departures_boards[stop_id][trip_id] = board_time
+        for stop_id, departures in departures_boards.items():
+            board = md.StopDepartureBoard(stop_id=stop_id, departures=departures)
+            stop_repo.update_departures_board(board)

@@ -1,10 +1,12 @@
-# tests/test_state_manager_integration.py
 import time
 
 import pytest
 
-from services.subway_live_hydrator.state_manager import update_redis_state
-from transit_core.redis_client import RedisClient
+import transit_core.redis_client as rc
+from services.subway_live_hydrator.state_manager import hydrate_realtime_data
+from transit_core.config import get_settings
+from transit_core.core.repository import Keys, StopRepository, TripRepository
+from transit_core.infrastructure.state_store import RedisStateStore
 
 
 @pytest.mark.filterwarnings("ignore:wait_container_is_ready")
@@ -12,7 +14,11 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     # Setup connection
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(6379)
-    client = RedisClient(host=host, port=port, decode_responses=True)
+
+    redis_client = rc.RedisClient(host=host, port=port, decode_responses=True)
+    state_store = RedisStateStore(redis_client=redis_client)
+    trip_repo = TripRepository(state_store=state_store)
+    stop_repo = StopRepository(state_store=state_store)
 
     # 1. Use the factory to create REAL data
     trip_id = "REAL_TRIP_123"
@@ -21,11 +27,33 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
 
     real_feed = feed_factory(trip_id=trip_id, stop_id=stop_id, arrival_offset=600)
 
-    # 2. Run the code (This will now pass because it's real ints/strings!)
-    update_redis_state(real_feed, client)
+    # 2. Run the hydration
+    hydrate_realtime_data(feed=real_feed, trip_repo=trip_repo, stop_repo=stop_repo)
 
-    # 3. Assertions
-    station_key = client.get_arrival_key(stop_id)
-    score = client.client.zscore(station_key, trip_id)
+    # 3. Assertions via Repositories
 
-    assert score == arrival_ts
+    # Check Trip Status
+    trip_status = trip_repo.get_trip_status(trip_id)
+    assert trip_status is not None
+    assert trip_status.trip.trip_id == trip_id
+
+    # Check Departures Board
+    board = stop_repo.get_departures_board(stop_id)
+    assert board is not None
+    assert board.stop_id == stop_id
+    assert board.departures[trip_id] == arrival_ts
+
+    # 4. Verify Raw Key Mappings and TTL (Optional but good for integration)
+    cfg = get_settings()
+
+    # Trip key
+    trip_key = Keys.trip(trip_id)
+    assert redis_client.client.exists(trip_key)
+    ttl = redis_client.client.ttl(trip_key)
+    assert 0 < ttl <= cfg.redis_gtfs_ttl
+
+    # Departures key
+    departures_key = Keys.departures(stop_id)
+    assert redis_client.client.exists(departures_key)
+    ttl = redis_client.client.ttl(departures_key)
+    assert 0 < ttl <= cfg.redis_gtfs_ttl
