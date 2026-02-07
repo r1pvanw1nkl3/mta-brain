@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import transit_core.core.models as md
 from services.subway_live_hydrator.state_manager import hydrate_realtime_data
 
 
@@ -43,16 +42,16 @@ def test_hydrate_realtime_data_calls_repositories():
         feed.entity[0].trip_update
     )
 
-    # Verify stop_repo.update_departures_board was called
+    # Verify stop_repo.arrivals was called
     # Since all stops are for the same trip,
     # they should be aggregated into their respective boards
-    assert mock_stop_repo.update_departures_board.call_count == num_stops
+    assert mock_stop_repo.update_arrivals_board.call_count == num_stops
 
     # Verify batch_session was used
     mock_state_store.batch_session.assert_called_once()
 
 
-def test_hydrate_realtime_data_filters_past_departures():
+def test_hydrate_realtime_data_filters_past_arrivals():
     mock_trip_repo = MagicMock()
     mock_stop_repo = MagicMock()
     mock_state_store = MagicMock()
@@ -68,8 +67,8 @@ def test_hydrate_realtime_data_filters_past_departures():
     # Trip status should still be updated
     mock_trip_repo.update_trip_status.assert_called_once()
 
-    # Departure board should NOT be updated because the stop is in the past
-    mock_stop_repo.update_departures_board.assert_not_called()
+    # Arrivals board should NOT be updated because the stop is in the past
+    mock_stop_repo.update_arrivals_board.assert_not_called()
 
 
 def test_hydrate_realtime_data_aggregates_multiple_trips_to_same_stop():
@@ -104,12 +103,11 @@ def test_hydrate_realtime_data_aggregates_multiple_trips_to_same_stop():
     with patch("time.time", return_value=current_time):
         hydrate_realtime_data(feed, mock_trip_repo, mock_stop_repo)
 
-    # Should call update_departures_board ONCE for STOP_X with both trips
-    mock_stop_repo.update_departures_board.assert_called_once()
-    call_args = mock_stop_repo.update_departures_board.call_args[0][0]
-    assert isinstance(call_args, md.StopDepartureBoard)
-    assert call_args.stop_id == stop_id
-    assert call_args.departures == {
+    # Should call update_arrivals_board ONCE for STOP_X with both trips
+    mock_stop_repo.update_arrivals_board.assert_called_once()
+    args = mock_stop_repo.update_arrivals_board.call_args[0]
+    assert args[0] == stop_id
+    assert args[1] == {
         "trip1": current_time + 100,
         "trip2": current_time + 200,
     }

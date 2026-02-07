@@ -76,8 +76,8 @@ CREATE TABLE IF NOT EXISTS trips (
 CREATE TABLE IF NOT EXISTS stop_times (
     trip_id TEXT,
     stop_id TEXT,
-    arrival_time TEXT,
-    departure_time TEXT,
+    arrival_time INTERVAL,
+    departure_time INTERVAL,
     stop_sequence INTEGER,
     PRIMARY KEY (trip_id, stop_sequence)
 );

@@ -3,6 +3,18 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Domain Models
+
+
+class Arrival(BaseModel):
+    trip_id: str
+    arrival_time: int
+    route_id: str
+    headsign: str
+    is_realtime: bool
+    status: str
+
+
 # Static GTFS Models
 
 
@@ -17,14 +29,6 @@ class Station(StationSummary):
     lat: float = Field(validation_alias="stop_lat")
     lon: float = Field(validation_alias="stop_lon")
     parent_station: Optional[str]
-
-
-# State Models
-
-
-class StopDepartureBoard(BaseModel):
-    stop_id: str
-    departures: dict[str, int]
 
 
 # GTFS models

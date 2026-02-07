@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import ContextManager, Dict, Protocol, Union, runtime_checkable
+from typing import Any, ContextManager, Dict, Protocol, Union, runtime_checkable
 
 RedisScore = Union[int, float]
 Mapping = Dict[str, RedisScore]
@@ -14,3 +14,12 @@ class StateStore(Protocol):
     def get_zset(self, key: str) -> dict[str, int]: ...
     def sync_set(self, key: str, mapping: Mapping, min_score: int, expiry) -> None: ...
     def check_and_update_timestamp(self, key: str, timestamp: int) -> bool: ...
+
+
+@runtime_checkable
+class StaticStore(Protocol):
+    def get_scheduled_arrivals(
+        self, stop_id: str, lookahead_minutes: int = 60
+    ) -> list[dict[str, Any]]: ...
+
+    def get_trip_metadata(self, trip_id: str) -> Dict[str, Any] | None: ...

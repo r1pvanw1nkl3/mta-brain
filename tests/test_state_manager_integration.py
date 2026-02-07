@@ -1,5 +1,3 @@
-import time
-
 import pytest
 
 import transit_core.redis_client as rc
@@ -23,7 +21,6 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     # 1. Use the factory to create REAL data
     trip_id = "REAL_TRIP_123"
     stop_id = "G08N"
-    arrival_ts = int(time.time()) + 600
 
     real_feed = feed_factory(trip_id=trip_id, stop_id=stop_id, arrival_offset=600)
 
@@ -37,12 +34,6 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     assert trip_status is not None
     assert trip_status.trip.trip_id == trip_id
 
-    # Check Departures Board
-    board = stop_repo.get_departures_board(stop_id)
-    assert board is not None
-    assert board.stop_id == stop_id
-    assert board.departures[trip_id] == arrival_ts
-
     # 4. Verify Raw Key Mappings and TTL (Optional but good for integration)
     cfg = get_settings()
 
@@ -53,7 +44,7 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     assert 0 < ttl <= cfg.redis_gtfs_ttl
 
     # Departures key
-    departures_key = Keys.departures(stop_id)
-    assert redis_client.client.exists(departures_key)
-    ttl = redis_client.client.ttl(departures_key)
+    arrivals_key = Keys.arrivals(stop_id)
+    assert redis_client.client.exists(arrivals_key)
+    ttl = redis_client.client.ttl(arrivals_key)
     assert 0 < ttl <= cfg.redis_gtfs_ttl

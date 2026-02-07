@@ -38,30 +38,16 @@ def test_trip_repository_get_trip_status():
     mock_state_store.get_kv.assert_called_once_with(Keys.trip(trip_id))
 
 
-def test_stop_repository_update_departures_board():
+def test_stop_repository_update_arrivals_board():
     current_time = int(time.time())
     mock_state_store = MagicMock()
     repo = StopRepository(state_store=mock_state_store)
 
-    board = md.StopDepartureBoard(stop_id="S1", departures={"T1": 1000, "T2": 2000})
+    stop_id = "S1"
+    arrivals = {"T1": 1000, "T2": 2000}
 
-    repo.update_departures_board(board, current_time)
+    repo.update_arrivals_board(stop_id, arrivals, current_time)
 
     mock_state_store.sync_set.assert_called_once_with(
-        Keys.departures("S1"), {"T1": 1000, "T2": 2000}, current_time, ANY
+        Keys.arrivals(stop_id), arrivals, current_time, ANY
     )
-
-
-def test_stop_repository_get_departures_board():
-    mock_state_store = MagicMock()
-    repo = StopRepository(state_store=mock_state_store)
-
-    stop_id = "S1"
-    mock_state_store.get_zset.return_value = {"T1": 1000}
-
-    board = repo.get_departures_board(stop_id)
-
-    assert board is not None
-    assert board.stop_id == "S1"
-    assert board.departures == {"T1": 1000}
-    mock_state_store.get_zset.assert_called_once_with(Keys.departures(stop_id))

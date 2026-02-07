@@ -2,7 +2,7 @@ import logging
 
 import transit_core.core.models as md
 from transit_core.config import get_settings
-from transit_core.core.interfaces import StateStore
+from transit_core.core.interfaces import StateStore, StaticStore
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,8 @@ class Keys:
         return f"trip:{trip_id}"
 
     @staticmethod
-    def departures(stop_id: str) -> str:
-        return f"departures:{stop_id}"
+    def arrivals(stop_id: str) -> str:
+        return f"arrivals:{stop_id}"
 
     @staticmethod
     def feed(feed_key: str) -> str:
@@ -42,19 +42,65 @@ class TripRepository:
 
 
 class StopRepository:
-    def __init__(self, state_store: StateStore):
+    def __init__(self, state_store: StateStore, static_store: StaticStore):
         self.state_store = state_store
+        self.static_store = static_store
 
-    def update_departures_board(self, board: md.StopDepartureBoard, current_time: int):
+    def update_arrivals_board(self, stop_id, board: dict[str, int], current_time: int):
         self.state_store.sync_set(
-            Keys.departures(board.stop_id),
-            board.departures,
+            Keys.arrivals(stop_id),
+            board,
             current_time,
             config.redis_gtfs_ttl,
         )
 
-    def get_departures_board(self, stop_id: str) -> md.StopDepartureBoard | None:
-        stops = self.state_store.get_zset(Keys.departures(stop_id))
-        if not stops:
-            return None
-        return md.StopDepartureBoard(stop_id=stop_id, departures=stops)
+    def get_arrivals_board(self, stop_id: str, lookahead_min: int = 60):
+        live_data = self.state_store.get_zset(Keys.arrivals(stop_id))
+        scheduled_data = self.static_store.get_scheduled_arrivals(
+            stop_id, lookahead_min
+        )
+        unified_board = []
+        matched_static_ids = set()
+
+        for live_id, arrival_ts in live_data.items():
+            clean_id = live_id.split("_", 1)[-1] if "_" in live_id else live_id
+
+            static_match = next(
+                (s for s in scheduled_data if clean_id in s["trip_id"]), None
+            )
+
+            if static_match:
+                matched_static_ids.add(static_match["trip_id"])
+                unified_board.append(
+                    md.Arrival(
+                        trip_id=live_id,
+                        route_id=static_match["route_id"],
+                        headsign=static_match["trip_headsign"],
+                        arrival_time=arrival_ts,
+                        is_realtime=True,
+                        status="LIVE",
+                    )
+                )
+            else:
+                unified_board.append(
+                    md.Arrival(
+                        trip_id=live_id,
+                        route_id="Unknown",  # update this. we do know it!
+                        headsign="In Transit",
+                        arrival_time=arrival_ts,
+                        status="LIVE-ADDED",
+                    )
+                )
+        for sched in scheduled_data:
+            if sched["trip_id"] not in matched_static_ids:
+                unified_board.append(
+                    md.Arrival(
+                        trip_id=sched["trip_id"],
+                        route_id=sched["route_id"],
+                        headsign=sched["trip_headsign"],
+                        arrival_time=sched["arrival_timestamp"],
+                        is_realtime=False,
+                        status="SCHEDULED",
+                    )
+                )
+        return sorted(unified_board, key=lambda x: x.arrival_time)
