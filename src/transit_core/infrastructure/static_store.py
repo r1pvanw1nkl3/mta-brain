@@ -13,11 +13,24 @@ class PostgresStaticStore:
     def get_scheduled_arrivals(self, stop_id: str, lookahead_minutes) -> list[dict]:
         now = datetime.now()
         day_name = now.strftime("%A").lower()
+        today_fmt = now.strftime("%Y%m%d")
 
-        start_time = (now - timedelta(minutes=5)).strftime("%H:%M:%S")
+        start_time = (now - timedelta(minutes=30)).strftime("%H:%M:%S")
         end_time = (now + timedelta(minutes=lookahead_minutes)).strftime("%H:%M:%S")
 
         query = f"""
+            WITH active_service AS (
+                SELECT service_id FROM calendar
+                WHERE {day_name} = 1
+                  AND %s BETWEEN start_date AND end_date
+                  AND service_id NOT IN (
+                      SELECT service_id FROM calendar_dates
+                      WHERE date = %s AND exception_type = 2
+                  )
+                UNION
+                SELECT service_id FROM calendar_dates
+                WHERE date = %s AND exception_type = 1
+            )
             SELECT
                 st.trip_id,
                 st.arrival_time,
@@ -27,11 +40,9 @@ class PostgresStaticStore:
                 RIGHT(st.stop_id, 1) as direction
             FROM stop_times st
             JOIN trips t ON st.trip_id = t.trip_id
-            JOIN calendar c ON t.service_id = c.service_id
+            JOIN active_service asvc ON t.service_id = asvc.service_id
             JOIN stops s ON st.stop_id = s.stop_id
             WHERE (s.parent_station = %s OR s.stop_id = %s)
-              AND c.{day_name} = 1
-              AND TO_CHAR(CURRENT_DATE, 'YYYYMMDD') BETWEEN c.start_date AND c.end_date
               AND st.arrival_time BETWEEN %s::interval AND %s::interval
             ORDER BY st.arrival_time ASC;
         """
@@ -39,7 +50,16 @@ class PostgresStaticStore:
         try:
             with self.pool.connection() as conn:
                 results = conn.execute(
-                    query, (stop_id, stop_id, start_time, end_time)
+                    query,
+                    (
+                        today_fmt,
+                        today_fmt,
+                        today_fmt,
+                        stop_id,
+                        stop_id,
+                        start_time,
+                        end_time,
+                    ),
                 ).fetchall()
                 return [self._format_row(row) for row in results]
         except Exception as e:
@@ -51,7 +71,41 @@ class PostgresStaticStore:
         return []
 
     def get_trip_metadata(self, trip_id: str) -> dict | None:
-        return
+        query = """
+            SELECT
+                t.trip_id,
+                t.route_id,
+                t.trip_headsign,
+                RIGHT(st.stop_id, 1) as direction
+            FROM trips t
+            LEFT JOIN stop_times st ON t.trip_id = st.trip_id
+            WHERE t.trip_id LIKE %s
+            LIMIT 1;
+        """
+        try:
+            with self.pool.connection() as conn:
+                # Use row_factory to get a dict if not already configured in pool
+                row = conn.execute(query, (trip_id,)).fetchone()
+                return row if row else None
+        except Exception:
+            logger.exception(
+                "Failed to fetch trip metadata", extra={"trip_id": trip_id}
+            )
+            return None
+
+    def get_stop_name(self, stop_id: str) -> str:
+        # Handle platform IDs (e.g., A20N -> A20)
+        base_stop_id = stop_id
+        if len(stop_id) > 3 and stop_id[-1] in ("N", "S"):
+            base_stop_id = stop_id[:-1]
+
+        query = "SELECT stop_name FROM stops WHERE stop_id = %s LIMIT 1;"
+        try:
+            with self.pool.connection() as conn:
+                row = conn.execute(query, (base_stop_id,)).fetchone()
+                return row["stop_name"] if row else "Unknown"
+        except Exception:
+            return "Unknown"
 
     def _format_row(self, row: dict) -> dict:
         row["arrival_timestamp"] = self._to_epoch(row["arrival_time"])

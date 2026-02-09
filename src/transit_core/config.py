@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     redis_db: int = 0
     redis_max_connections: int = 20
-    redis_gtfs_ttl: int = 30
+    redis_gtfs_ttl: int = 300
+    trip_metadata_ttl: int = 3600
 
     gtfs_static_url: str = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
     gtfs_supplemented_url: str = (

@@ -48,8 +48,10 @@ class RedisStateStore:
             self._get_client().zadd(key, mapping)
             self._get_client().expire(key, expiry)
 
-    def get_zset(self, key: str) -> dict[str, int]:
-        raw_data = self.redis.client.zrange(key, 0, -1, withscores=True)
+    def get_zset(self, key: str, max_score: int = -1) -> dict[str, int]:
+        raw_data = self.redis.client.zrange(
+            key, 0, max_score, withscores=True, byscore=True
+        )
         return {member: int(score) for member, score in raw_data}
 
     def check_and_update_timestamp(self, key: str, timestamp: int) -> bool:

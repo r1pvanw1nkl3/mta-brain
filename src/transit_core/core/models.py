@@ -11,6 +11,7 @@ class Arrival(BaseModel):
     arrival_time: int
     route_id: str
     headsign: str
+    direction: str
     is_realtime: bool
     status: str
 
@@ -72,6 +73,7 @@ class MtaTripDescriptor(BaseModel):
 class Trip(BaseModel):
     trip_id: str
     start_date: int
+    start_time: Optional[str] = None
     schedule_relationship: Optional[TripScheduleRelationship] = None
     route_id: str
     direction_id: Optional[Direction] = None
