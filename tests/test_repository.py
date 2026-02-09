@@ -188,7 +188,8 @@ def test_keys():
 
 def test_trip_reader_get_trip_status():
     mock_state_store = MagicMock()
-    reader = TripReader(state_store=mock_state_store)
+    mock_static_store = MagicMock()
+    reader = TripReader(state_store=mock_state_store, static_store=mock_static_store)
 
     # Test None case
     mock_state_store.get_kv.return_value = None
@@ -199,6 +200,47 @@ def test_trip_reader_get_trip_status():
     mock_state_store.get_kv.return_value = json_data
     status = reader.get_trip_status("T1")
     assert status.trip.trip_id == "T1"
+
+
+def test_trip_reader_get_trip_arrivals_live():
+    mock_state_store = MagicMock()
+    mock_static_store = MagicMock()
+    reader = TripReader(state_store=mock_state_store, static_store=mock_static_store)
+
+    trip_id = "T1"
+    now = 1000
+    # Use explicit JSON string with aliases
+    # ('arrival', 'departure') as would come from Redis
+    json_data = {
+        "trip": {"trip_id": trip_id, "route_id": "R1", "start_date": 20260209},
+        "stop_time_update": [
+            {"stop_id": "S1", "arrival": {"time": now + 60}},
+            {"stop_id": "S2", "departure": {"time": now + 120}},
+        ],
+    }
+    import json
+
+    mock_state_store.get_kv.return_value = json.dumps(json_data)
+
+    arrivals = reader.get_trip_arrivals(trip_id)
+
+    assert arrivals == {"S1": now + 60, "S2": now + 120}
+    mock_static_store.get_trip_stop_times.assert_not_called()
+
+
+def test_trip_reader_get_trip_arrivals_static_fallback():
+    mock_state_store = MagicMock()
+    mock_static_store = MagicMock()
+    reader = TripReader(state_store=mock_state_store, static_store=mock_static_store)
+
+    trip_id = "T1"
+    mock_state_store.get_kv.return_value = None
+    mock_static_store.get_trip_stop_times.return_value = {"S1": 1000, "S2": 2000}
+
+    arrivals = reader.get_trip_arrivals(trip_id)
+
+    assert arrivals == {"S1": 1000, "S2": 2000}
+    mock_static_store.get_trip_stop_times.assert_called_once_with(trip_id)
 
 
 def test_stop_reader_get_arrivals_board_specific_platform():

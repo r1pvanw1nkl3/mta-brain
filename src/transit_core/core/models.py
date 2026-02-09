@@ -57,6 +57,8 @@ class TimeUpdate(BaseModel):
 
 
 class StopTimeUpdate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     stop_sequence: Optional[int] = None
     stop_id: str
     schedule_relationship: TripScheduleRelationship = TripScheduleRelationship.SCHEDULED
@@ -65,12 +67,16 @@ class StopTimeUpdate(BaseModel):
 
 
 class MtaTripDescriptor(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     train_id: Optional[str] = Field(None, alias="train_id")
     is_assigned: Optional[bool] = Field(None, alias="is_assigned")
     direction: Optional[Direction] = Field(Direction.NORTH, alias="direction")
 
 
 class Trip(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     trip_id: str
     start_date: int
     start_time: Optional[str] = None
@@ -84,6 +90,8 @@ class Trip(BaseModel):
 
 
 class Vehicle(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     trip: Trip
     current_stop_sequence: Optional[int] = None
     current_status: Optional[int] = None
@@ -92,6 +100,8 @@ class Vehicle(BaseModel):
 
 
 class TripUpdate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     trip: Trip
     stop_time_update: Optional[list[StopTimeUpdate]] = None
 

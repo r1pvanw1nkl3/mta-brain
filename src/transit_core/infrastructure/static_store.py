@@ -107,6 +107,36 @@ class PostgresStaticStore:
         except Exception:
             return "Unknown"
 
+    def get_trip_stop_times(self, trip_id: str) -> dict[str, int]:
+        query = """
+            SELECT stop_id, arrival_time
+            FROM stop_times
+            WHERE trip_id = %s
+            ORDER BY stop_sequence;
+        """
+        try:
+            with self.pool.connection() as conn:
+                results = conn.execute(query, (trip_id,)).fetchall()
+                if not results:
+                    # Suffix match fallback
+                    query_suffix = """
+                        SELECT stop_id, arrival_time
+                        FROM stop_times
+                        WHERE trip_id LIKE %s
+                        ORDER BY stop_sequence;
+                    """
+                    results = conn.execute(query_suffix, ("%" + trip_id,)).fetchall()
+
+                return {
+                    row["stop_id"]: self._to_epoch(row["arrival_time"])
+                    for row in results
+                }
+        except Exception:
+            logger.exception(
+                "Failed to fetch trip stop times", extra={"trip_id": trip_id}
+            )
+            return {}
+
     def _format_row(self, row: dict) -> dict:
         row["arrival_timestamp"] = self._to_epoch(row["arrival_time"])
         row["arrival_time_str"] = str(row["arrival_time"])

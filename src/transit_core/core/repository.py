@@ -45,8 +45,9 @@ class TripWriter:
 
 
 class TripReader:
-    def __init__(self, state_store: StateStore):
+    def __init__(self, state_store: StateStore, static_store: StaticStore):
         self.state_store = state_store
+        self.static_store = static_store
 
     def get_trip_status(self, trip_id: str) -> md.TripUpdate | None:
         json = self.state_store.get_kv(Keys.trip(trip_id))
@@ -54,6 +55,23 @@ class TripReader:
             return None
         else:
             return md.TripUpdate.model_validate_json(json)
+
+    def get_trip_arrivals(self, trip_id: str) -> dict[str, int]:
+        live_status = self.get_trip_status(trip_id)
+        if live_status and live_status.stop_time_update:
+            arrivals = {}
+            for update in live_status.stop_time_update:
+                ts = None
+                if update.arrival_time:
+                    ts = update.arrival_time.time
+                elif update.departure_time:
+                    ts = update.departure_time.time
+
+                if ts:
+                    arrivals[update.stop_id] = ts
+            return arrivals
+
+        return self.static_store.get_trip_stop_times(trip_id)
 
 
 class StopWriter:
