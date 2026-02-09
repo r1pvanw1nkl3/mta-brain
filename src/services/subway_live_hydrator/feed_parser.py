@@ -10,6 +10,7 @@ import transit_core.core.models as models
 import transit_core.core.protos.gtfs_realtime_pb2 as pb
 from transit_core.config import get_settings
 from transit_core.core.exceptions import FeedFetchError, FeedParseError
+from transit_core.core.protos import nyct_subway_pb2
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,10 @@ def fetch_raw_feed(feed_url: str):
             feed = pb.FeedMessage()
             feed.ParseFromString(response.content)
             feed_dict = MessageToDict(
-                feed, preserving_proto_field_name=True, use_integers_for_enums=True
+                feed,
+                preserving_proto_field_name=True,
+                use_integers_for_enums=True,
+                descriptor_pool=nyct_subway_pb2.DESCRIPTOR.pool,
             )
             entity_count = len(feed_dict.get("entity", []))
             logger.info(

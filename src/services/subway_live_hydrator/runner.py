@@ -6,6 +6,7 @@ import services.subway_live_hydrator.feed_parser as fp
 import services.subway_live_hydrator.state_manager as sm
 import transit_core.redis_client as rc
 from transit_core.config import get_settings
+from transit_core.core.protos import gtfs_realtime_pb2, nyct_subway_pb2  # noqa: F401
 from transit_core.core.repository import Keys, StopWriter, TripWriter
 from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.transit_core_logging import setup_logging

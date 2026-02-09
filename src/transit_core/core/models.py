@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 # Domain Models
 
@@ -42,8 +42,11 @@ class TripScheduleRelationship(IntEnum):
 
 
 class Direction(IntEnum):
-    NORTH = 0
+    NORTH = 1
+    EAST = 2
     SOUTH = 3
+    WEST = 4
+    UNKNOWN = 0
 
 
 class TimeUpdate(BaseModel):
@@ -60,12 +63,22 @@ class StopTimeUpdate(BaseModel):
     departure_time: Optional[TimeUpdate] = Field(None, alias="departure")
 
 
+class MtaTripDescriptor(BaseModel):
+    train_id: Optional[str] = Field(None, alias="train_id")
+    is_assigned: Optional[bool] = Field(None, alias="is_assigned")
+    direction: Optional[Direction] = Field(Direction.NORTH, alias="direction")
+
+
 class Trip(BaseModel):
     trip_id: str
     start_date: int
     schedule_relationship: Optional[TripScheduleRelationship] = None
     route_id: str
     direction_id: Optional[Direction] = None
+    mta_trip_ext: Optional[MtaTripDescriptor] = Field(
+        None,
+        validation_alias=AliasChoices("nyct_trip_descriptor", "[nyct_trip_descriptor]"),
+    )
 
 
 class Vehicle(BaseModel):
