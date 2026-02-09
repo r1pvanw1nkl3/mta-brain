@@ -57,7 +57,9 @@ def test_redis_state_store_get_zset():
     mock_redis.client.zrange.return_value = [("a", 1.0), ("b", 2.0)]
     store = RedisStateStore(redis_client=mock_redis)
     assert store.get_zset("key") == {"a": 1, "b": 2}
-    mock_redis.client.zrange.assert_called_once_with("key", 0, -1, withscores=True)
+    mock_redis.client.zrange.assert_called_once_with(
+        "key", 0, -1, withscores=True, byscore=True
+    )
 
 
 def test_redis_state_store_check_and_update_timestamp():

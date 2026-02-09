@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 import requests
@@ -40,7 +40,10 @@ def test_fetch_raw_feed_success(mock_env_vars):
         mock_get.assert_called_with("http://fake-url.com", timeout=5)  # Default is 5
         mock_proto.ParseFromString.assert_called_with(mock_content)
         mock_to_dict.assert_called_with(
-            mock_proto, preserving_proto_field_name=True, use_integers_for_enums=True
+            mock_proto,
+            preserving_proto_field_name=True,
+            use_integers_for_enums=True,
+            descriptor_pool=ANY,
         )
         assert result == expected_dict
 

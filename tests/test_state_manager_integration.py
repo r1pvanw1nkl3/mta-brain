@@ -41,7 +41,7 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     trip_key = Keys.trip(trip_id)
     assert redis_client.client.exists(trip_key)
     ttl = redis_client.client.ttl(trip_key)
-    assert 0 < ttl <= cfg.redis_gtfs_ttl
+    assert 0 < ttl <= cfg.trip_metadata_ttl
 
     # Departures key
     arrivals_key = Keys.arrivals(stop_id)

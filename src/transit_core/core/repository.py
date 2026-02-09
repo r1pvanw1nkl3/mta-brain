@@ -78,8 +78,6 @@ class StopReader:
     def get_arrivals_board(
         self, stop_id: str, lookahead_min: int = 60
     ) -> list[md.Arrival]:
-        # 1. Fetch data
-        # Handle both station ID (e.g., A20) and platform ID (e.g., A20N)
         if stop_id.endswith(("N", "S")):
             base_stop_id = stop_id[:-1]
             platforms = [stop_id]

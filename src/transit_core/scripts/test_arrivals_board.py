@@ -24,7 +24,7 @@ def run_test():
     stop_repo = StopReader(state_store, static_store)
 
     # 3. Fetch Unified Board for 155 St (A20)
-    stop_id = "A20"
+    stop_id = "Q04"
     print(f"\n--- Unified Departure Board for {stop_id} ---")
     print(f"Current Time: {datetime.now().strftime('%H:%M:%S')}\n")
 

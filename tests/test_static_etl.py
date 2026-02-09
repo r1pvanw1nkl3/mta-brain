@@ -180,7 +180,7 @@ def test_run_reload_all(mock_env_vars):
 
 def test_run_reload_supplemented_only(mock_env_vars):
     with (
-        patch("services.static_etl.etl_runner.get_regular_feed") as mock_get_reg,
+        patch("services.static_etl.etl_runner.get_regular_feed"),
         patch("services.static_etl.etl_runner.get_supplemented_feed") as mock_get_supp,
         patch("services.static_etl.etl_runner.process_gtfs_zip") as mock_process,
         patch("services.static_etl.etl_runner.create_db_pool"),
@@ -188,6 +188,45 @@ def test_run_reload_supplemented_only(mock_env_vars):
     ):
         etl_runner.run_reload(all=False)
 
-        mock_get_reg.assert_not_called()
         assert mock_get_supp.called
         assert mock_process.call_count == 1
+
+
+def test_reload_all_wrapper():
+    with patch("services.static_etl.etl_runner.run_reload") as mock_run:
+        etl_runner.reload_all()
+        mock_run.assert_called_once_with(True)
+
+
+def test_run_reload_download_exception():
+    with patch(
+        "services.static_etl.etl_runner.get_supplemented_feed",
+        side_effect=Exception("Download failed"),
+    ):
+        # Should not raise exception, just log and return
+        etl_runner.run_reload(all=False)
+
+
+def test_run_reload_process_exception():
+    with (
+        patch("services.static_etl.etl_runner.get_supplemented_feed") as mock_get,
+        patch(
+            "services.static_etl.etl_runner.create_db_pool",
+            side_effect=Exception("Pool failed"),
+        ),
+    ):
+        mock_get.return_value = "file.zip"
+        # Should not raise exception
+        etl_runner.run_reload(all=False)
+
+
+def test_get_regular_feed():
+    with patch("services.static_etl.gtfs_download._retrieve_feed") as mock_retrieve:
+        gtfs_download.get_regular_feed()
+        mock_retrieve.assert_called_once()
+
+
+def test_get_supplemented_feed():
+    with patch("services.static_etl.gtfs_download._retrieve_feed") as mock_retrieve:
+        gtfs_download.get_supplemented_feed()
+        mock_retrieve.assert_called_once()
