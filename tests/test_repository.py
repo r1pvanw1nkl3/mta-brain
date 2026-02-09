@@ -2,12 +2,12 @@ import time
 from unittest.mock import ANY, MagicMock
 
 import transit_core.core.models as md
-from transit_core.core.repository import Keys, StopRepository, TripRepository
+from transit_core.core.repository import Keys, StopWriter, TripWriter
 
 
 def test_trip_repository_update_trip_status():
     mock_state_store = MagicMock()
-    repo = TripRepository(state_store=mock_state_store)
+    repo = TripWriter(state_store=mock_state_store)
 
     trip_update = md.TripUpdate(
         trip=md.Trip(trip_id="T1", route_id="R1", start_date=20260206)
@@ -25,7 +25,7 @@ def test_trip_repository_update_trip_status():
 
 def test_trip_repository_get_trip_status():
     mock_state_store = MagicMock()
-    repo = TripRepository(state_store=mock_state_store)
+    repo = TripWriter(state_store=mock_state_store)
 
     trip_id = "T1"
     json_data = '{"trip": {"trip_id": "T1", "route_id": "R1", "start_date": 20260206}}'
@@ -41,7 +41,7 @@ def test_trip_repository_get_trip_status():
 def test_stop_repository_update_arrivals_board():
     current_time = int(time.time())
     mock_state_store = MagicMock()
-    repo = StopRepository(state_store=mock_state_store)
+    repo = StopWriter(state_store=mock_state_store)
 
     stop_id = "S1"
     arrivals = {"T1": 1000, "T2": 2000}

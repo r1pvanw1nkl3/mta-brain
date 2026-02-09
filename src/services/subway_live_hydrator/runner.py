@@ -6,7 +6,7 @@ import services.subway_live_hydrator.feed_parser as fp
 import services.subway_live_hydrator.state_manager as sm
 import transit_core.redis_client as rc
 from transit_core.config import get_settings
-from transit_core.core.repository import Keys, StopRepository, TripRepository
+from transit_core.core.repository import Keys, StopWriter, TripWriter
 from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.transit_core_logging import setup_logging
 
@@ -26,8 +26,8 @@ def runner():
     )
 
     state_store = RedisStateStore(redis_client=redis_client)
-    trip_repo = TripRepository(state_store=state_store)
-    stop_repo = StopRepository(state_store=state_store)
+    trip_repo = TripWriter(state_store=state_store)
+    stop_repo = StopWriter(state_store=state_store)
 
     urls = settings.gtfs_live_urls
     logger.info(f"Starting runner for the following feeds: {' '.join(urls.keys())}")

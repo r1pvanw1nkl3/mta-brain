@@ -3,7 +3,7 @@ import pytest
 import transit_core.redis_client as rc
 from services.subway_live_hydrator.state_manager import hydrate_realtime_data
 from transit_core.config import get_settings
-from transit_core.core.repository import Keys, StopRepository, TripRepository
+from transit_core.core.repository import Keys, StopWriter, TripWriter
 from transit_core.infrastructure.state_store import RedisStateStore
 
 
@@ -15,8 +15,8 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
 
     redis_client = rc.RedisClient(host=host, port=port, decode_responses=True)
     state_store = RedisStateStore(redis_client=redis_client)
-    trip_repo = TripRepository(state_store=state_store)
-    stop_repo = StopRepository(state_store=state_store)
+    trip_repo = TripWriter(state_store=state_store)
+    stop_repo = StopWriter(state_store=state_store)
 
     # 1. Use the factory to create REAL data
     trip_id = "REAL_TRIP_123"

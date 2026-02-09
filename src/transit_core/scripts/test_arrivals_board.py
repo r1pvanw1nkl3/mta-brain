@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 
 from transit_core.config import get_settings
-from transit_core.core.repository import StopRepository
+from transit_core.core.repository import StopReader
 from transit_core.db import create_db_pool
 from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.infrastructure.static_store import PostgresStaticStore
@@ -21,15 +21,15 @@ def run_test():
     static_store = PostgresStaticStore(db_pool)
 
     # 2. Initialize Repository
-    stop_repo = StopRepository(state_store, static_store)
+    stop_repo = StopReader(state_store, static_store)
 
     # 3. Fetch Unified Board for 86th St (A21)
     # Note: Use 'A21' for 86th St Central Park West (A/B/C)
-    stop_id = "A20"
+    stop_id = "635"
     print(f"\n--- Unified Departure Board for {stop_id} ---")
     print(f"Current Time: {datetime.now().strftime('%H:%M:%S')}\n")
 
-    board = stop_repo.get_arrivals_board(stop_id)
+    board = stop_repo.get_arrivals_board(stop_id, 240)
 
     # 4. Format Output
     print(f"{'ROUTE':<6} | {'DESTINATION':<25} | {'TIME':<8} | {'STATUS':<12}")

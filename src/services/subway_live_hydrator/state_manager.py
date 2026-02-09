@@ -2,13 +2,13 @@ import logging
 import time
 
 import transit_core.core.models as md
-from transit_core.core.repository import StopRepository, TripRepository
+from transit_core.core.repository import StopWriter, TripWriter
 
 logger = logging.getLogger(__name__)
 
 
 def hydrate_realtime_data(
-    feed: md.Feed, trip_repo: TripRepository, stop_repo: StopRepository
+    feed: md.Feed, trip_repo: TripWriter, stop_repo: StopWriter
 ) -> None:
     state_store = trip_repo.state_store
 
@@ -27,8 +27,8 @@ def hydrate_realtime_data(
                     for stop_time in trip_update.stop_time_update:
                         if stop_time.arrival_time:
                             board_time = stop_time.arrival_time.time
-                        elif stop_time.arrival_time:
-                            board_time = stop_time.arrival_time.time
+                        elif stop_time.departure_time:
+                            board_time = stop_time.departure_time.time
                         else:
                             continue
                         if board_time < current_time:
