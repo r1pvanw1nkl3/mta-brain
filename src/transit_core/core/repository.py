@@ -56,22 +56,51 @@ class TripReader:
         else:
             return md.TripUpdate.model_validate_json(json)
 
-    def get_trip_arrivals(self, trip_id: str) -> dict[str, int]:
+    def get_trip_arrivals(self, trip_id: str) -> list[dict]:
         live_status = self.get_trip_status(trip_id)
+        raw_stops = []
+
         if live_status and live_status.stop_time_update:
-            arrivals = {}
-            for update in live_status.stop_time_update:
-                ts = None
-                if update.arrival_time:
-                    ts = update.arrival_time.time
-                elif update.departure_time:
-                    ts = update.departure_time.time
+            for u in live_status.stop_time_update:
+                # Extract the integer .time attribute from the TimeUpdate object
+                # Use None as a fallback if the object itself is missing
+                arr = u.arrival_time.time if u.arrival_time else None
+                dep = u.departure_time.time if u.departure_time else None
 
-                if ts:
-                    arrivals[update.stop_id] = ts
-            return arrivals
+                raw_stops.append(
+                    {
+                        "stop_id": u.stop_id,
+                        "arrival": arr,  # Now an integer
+                        "departure": dep,  # Now an integer
+                    }
+                )
+        else:
+            static_arrivals = self.static_store.get_trip_stop_times(trip_id)
+            for sid, ts in static_arrivals.items():
+                raw_stops.append({"stop_id": sid, "arrival": ts, "departure": ts})
 
-        return self.static_store.get_trip_stop_times(trip_id)
+        # Fetch names for the stops we found
+        stop_ids = [item["stop_id"] for item in raw_stops]
+        names_map = self.static_store.get_stop_names(stop_ids)
+
+        results = []
+        for item in raw_stops:
+            # Use the parent ID (strip N/S) for the name lookup if necessary
+            # sid = item["stop_id"]
+            # lookup_id = sid[:-1] if sid[-1] in ('N', 'S') else sid
+
+            name = names_map.get(item["stop_id"])
+
+            if name:
+                results.append(
+                    {
+                        "stop_id": item["stop_id"],
+                        "stop_name": name,
+                        "arrival_time": item["arrival"],
+                        "departure_time": item["departure"],
+                    }
+                )
+        return results
 
 
 class StopWriter:
@@ -92,6 +121,9 @@ class StopReader:
     def __init__(self, state_store: StateStore, static_store: StaticStore):
         self.state_store = state_store
         self.static_store = static_store
+
+    def get_stop_name(self, stop_id: str):
+        return self.static_store.get_stop_name(stop_id)
 
     def get_arrivals_board(
         self, stop_id: str, lookahead_min: int = 60

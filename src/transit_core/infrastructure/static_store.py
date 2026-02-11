@@ -137,6 +137,12 @@ class PostgresStaticStore:
             )
             return {}
 
+    def get_stop_names(self, stop_ids: list[str]) -> dict[str, str]:
+        query = "select stop_id, stop_name FROM stops WHERE stop_id = ANY(%s)"
+        with self.pool.connection() as conn:
+            rows = conn.execute(query, (stop_ids,))
+        return {row["stop_id"]: row["stop_name"] for row in rows}
+
     def _format_row(self, row: dict) -> dict:
         row["arrival_timestamp"] = self._to_epoch(row["arrival_time"])
         row["arrival_time_str"] = str(row["arrival_time"])
