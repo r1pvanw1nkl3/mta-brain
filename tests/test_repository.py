@@ -186,6 +186,15 @@ def test_keys():
     assert Keys.feed("F1") == "feed:F1"
 
 
+def test_stop_reader_get_stop_name():
+    mock_state_store = MagicMock()
+    mock_static_store = MagicMock()
+    reader = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    mock_static_store.get_stop_name.return_value = "Stop 1"
+    assert reader.get_stop_name("S1") == "Stop 1"
+    mock_static_store.get_stop_name.assert_called_once_with("S1")
+
+
 def test_trip_reader_get_trip_status():
     mock_state_store = MagicMock()
     mock_static_store = MagicMock()
@@ -221,10 +230,24 @@ def test_trip_reader_get_trip_arrivals_live():
     import json
 
     mock_state_store.get_kv.return_value = json.dumps(json_data)
+    mock_static_store.get_stop_names.return_value = {"S1": "Stop 1", "S2": "Stop 2"}
 
     arrivals = reader.get_trip_arrivals(trip_id)
 
-    assert arrivals == {"S1": now + 60, "S2": now + 120}
+    assert arrivals == [
+        {
+            "stop_id": "S1",
+            "stop_name": "Stop 1",
+            "arrival_time": now + 60,
+            "departure_time": None,
+        },
+        {
+            "stop_id": "S2",
+            "stop_name": "Stop 2",
+            "arrival_time": None,
+            "departure_time": now + 120,
+        },
+    ]
     mock_static_store.get_trip_stop_times.assert_not_called()
 
 
@@ -236,10 +259,24 @@ def test_trip_reader_get_trip_arrivals_static_fallback():
     trip_id = "T1"
     mock_state_store.get_kv.return_value = None
     mock_static_store.get_trip_stop_times.return_value = {"S1": 1000, "S2": 2000}
+    mock_static_store.get_stop_names.return_value = {"S1": "Stop 1", "S2": "Stop 2"}
 
     arrivals = reader.get_trip_arrivals(trip_id)
 
-    assert arrivals == {"S1": 1000, "S2": 2000}
+    assert arrivals == [
+        {
+            "stop_id": "S1",
+            "stop_name": "Stop 1",
+            "arrival_time": 1000,
+            "departure_time": 1000,
+        },
+        {
+            "stop_id": "S2",
+            "stop_name": "Stop 2",
+            "arrival_time": 2000,
+            "departure_time": 2000,
+        },
+    ]
     mock_static_store.get_trip_stop_times.assert_called_once_with(trip_id)
 
 
