@@ -1,93 +1,80 @@
 # MTA Brain
 
-MTA Brain is a Python-based data engineering project designed to ingest, process, and store New York City Transit (MTA) data. It handles both static GTFS data (schedules, routes, stops) and real-time GTFS feeds (live arrivals, delays).
+MTA Brain is a high-performance transit data engine built to ingest, process, and serve New York City Transit (MTA) data. It synchronizes static GTFS schedules with real-time arrivals to provide a unified view of the subway system's current state.
+
+## Quick Start
+
+1.  **Environment Setup**
+    ```bash
+    uv sync
+    cp .env.example .env  # Ensure you configure your DB credentials
+    ```
+
+2.  **Spin up Infrastructure**
+    ```bash
+    docker compose up -d
+    ```
+
+3.  **Bootstrap Data**
+    ```bash
+    uv run reload-all-gtfs  # Initial load of static subway data
+    ```
+
+4.  **Start Services**
+    ```bash
+    uv run live-hydrator    # Start the real-time polling engine
+    uv run api              # Start the FastAPI server (localhost:8000)
+    ```
+
+---
 
 ## Features
 
-- **Static ETL:** Downloads and parses static GTFS feeds into a PostgreSQL database.
-- **Live Hydration:** Polls MTA GTFS Realtime feeds and updates a Redis cache with current transit state.
-- **Core Library:** Shared logic for database connectivity, configuration, and data models.
+- **Static ETL Engine**: Automated pipeline for downloading and ingesting MTA GTFS datasets into PostgreSQL.
+- **Subway Live Hydrator**: Low-latency polling service that parses binary Protobuf feeds and maintains system state in Redis.
+- **Transit API**: RESTful interface for querying stops, routes, and real-time trip arrivals.
+- **Type-Safe Models**: Robust data validation using Pydantic and Protocol Buffers.
 
 ## Tech Stack
 
-- **Language:** Python 3.13+
-- **Package Manager:** [uv](https://github.com/astral-sh/uv)
-- **Database:** PostgreSQL 16 (with Flyway for migrations)
-- **Cache/Real-time Store:** Redis 7
-- **Data Formats:** Protocol Buffers (GTFS Realtime), CSV (GTFS Static)
+- **Runtime**: Python 3.13+
+- **Package Management**: [uv](https://github.com/astral-sh/uv)
+- **Primary Database**: PostgreSQL 16 (Relational schedules)
+- **State Store**: Redis 7 (Real-time arrivals)
+- **API Framework**: FastAPI / Uvicorn
+- **Tooling**: Ruff (Linting/Formatting), Pytest (Testing), Flyway (Migrations)
 
-## Getting Started
+## Project Structure
 
-### Prerequisites
-
-- **Python 3.13+** (Managed by `uv` via `.python-version`)
-- **uv**: For dependency management.
-- **Docker**: For running PostgreSQL and Redis.
-
-### Installation
-
-1. Clone the repository.
-2. Install dependencies:
-   ```bash
-   uv sync
-   ```
-
-### Configuration
-
-The application uses environment variables for configuration. Create a `.env` file in the root directory based on the following required variables:
-
-```env
-ETL_DB_USER=your_etl_user
-ETL_DB_PASSWORD=your_etl_password
-APP_DB_USER=your_app_user
-APP_DB_PASSWORD=your_app_password
-DB_NAME=mta_brain
-```
-
-See `src/transit_core/config.py` for all available settings.
-
-### Infrastructure Setup
-
-Start PostgreSQL, Redis, and run database migrations using Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-## Running the Application
-
-### 1. Load Static Data (ETL)
-Download and ingest the latest static GTFS data into PostgreSQL:
-```bash
-uv run reload-all-gtfs
-```
-
-### 2. Run Live Data Hydrator
-Start the service that polls MTA Realtime feeds and updates Redis:
-```bash
-uv run live-hydrator
+```text
+├── src/
+│   ├── services/
+│   │   ├── static_etl/           # GTFS download & DB ingestion logic
+│   │   └── subway_live_hydrator/ # Real-time feed polling & Redis updates
+│   └── transit_core/
+│       ├── api/                  # FastAPI routers and dependencies
+│       ├── core/                 # Business logic, repositories & Proto definitions
+│       └── infrastructure/       # Redis and DB client implementations
+├── proto_schemas/                # MTA and GTFS-Realtime .proto files
+├── sql/                          # Flyway migration scripts
+└── tests/                        # Integration and unit test suite
 ```
 
 ## Development
 
-### Running Tests
-The project uses `pytest` and `testcontainers` for integration testing.
+### Testing
+We use `testcontainers` to run integration tests against real Postgres and Redis instances.
 ```bash
 uv run pytest
 ```
 
-### Linting & Formatting
-The project uses `ruff` for linting and formatting.
+### Code Quality
 ```bash
-uv run ruff check .
-uv run ruff format .
+uv run ruff check .  # Linting
+uv run ruff format . # Formatting
 ```
 
-## Project Structure
-
-- `src/transit_core`: Shared core logic, database connections, configuration, and data models.
-- `src/services/static_etl`: Logic for downloading and parsing static GTFS zip files.
-- `src/services/subway_live_hydrator`: Logic for polling and parsing real-time Protobuf feeds.
-- `proto_schemas`: Original `.proto` files for GTFS Realtime and NYCT extensions.
-- `sql`: Database migration scripts.
-- `tests`: Comprehensive test suite.
+### Logging
+Logs are structured as JSON and can be found in the `logs/` directory:
+- `logs/app.log`: General application and API logs.
+- `logs/etl.log`: Static data ingestion logs.
