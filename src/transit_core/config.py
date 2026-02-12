@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     redis_gtfs_ttl: int = 300
     trip_metadata_ttl: int = 3600
 
+    arrivals_window_past_seconds: int = 300
+    fuzzy_match_window_seconds: int = 900
+    recently_passed_filter_seconds: int = 60
+
     gtfs_static_url: str = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
     gtfs_supplemented_url: str = (
         "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_supplemented.zip"

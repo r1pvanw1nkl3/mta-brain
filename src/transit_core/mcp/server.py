@@ -51,7 +51,7 @@ mcp = FastMCP("MTA-Brain", lifespan=lifespan)
 
 
 @mcp.tool()
-def get_station_info(stop_id: str, ctx: Context) -> str:
+def get_station_info(stop_id: str, ctx: Context) -> list[dict]:
     """
     Fetch live and scheduled arrival times for a specific NYC subway stop.
 
@@ -60,11 +60,7 @@ def get_station_info(stop_id: str, ctx: Context) -> str:
 
     :param stop_id: The GTFS Stop ID. Use the base ID (e.g., 'A20') for all arrivals,
                     or append 'N' or 'S' (e.g., 'A20N') for specific directions.
-    :type stop_id: str
-    :return: A formatted list of upcoming train arrivals with routes and destinations,
-            along with an internal Trip ID that can be used as a parameter for other
-            calls (don't show this to the user).
-    :rtype: str
+    :return: A list of upcoming train arrivals with routes and destinations.
     """
     logger.info(f"Tool get_station_info called with stop_id: {stop_id}")
 
@@ -75,31 +71,32 @@ def get_station_info(stop_id: str, ctx: Context) -> str:
         arrivals = reader.get_arrivals_board(stop_id)
         logger.debug(f"Repository call returned {len(arrivals)} arrivals")
 
-        if not arrivals:
-            return f"No arrival data found for stop {stop_id}"
-
         now = int(time.time())
-        lines = []
+        results = []
         for a in arrivals:
             minutes_away = max(0, (a.arrival_time - now) // 60)
             clock_time = (
                 datetime.fromtimestamp(a.arrival_time).strftime("%I:%M %p").lstrip("0")
             )
-            lines.append(
-                (
-                    f"{a.route_id} to {a.headsign}: {minutes_away}m"
-                    f"({clock_time}) [{a.status}] [Trip ID: {a.trip_id}]"
-                )
+            results.append(
+                {
+                    "route": a.route_id,
+                    "destination": a.headsign,
+                    "minutes_away": minutes_away,
+                    "clock_time": clock_time,
+                    "status": a.status,
+                    "trip_id": a.trip_id,
+                }
             )
 
-        return "\n".join(lines)
+        return results
     except Exception as e:
         logger.exception(f"Error in get_station_info: {e}")
-        return f"Error fetching station info: {str(e)}"
+        raise
 
 
 @mcp.tool()
-def get_trip_arrivals(trip_id: str, ctx: Context) -> str:
+def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict]:
     """
     Fetch all upcoming stop arrivals for a specific trip (train).
 
@@ -114,11 +111,8 @@ def get_trip_arrivals(trip_id: str, ctx: Context) -> str:
         reader = ctx.request_context.lifespan_context["trip_reader"]
         arrivals = reader.get_trip_arrivals(trip_id)
 
-        if not arrivals:
-            return f"No arrival data found for trip {trip_id}"
-
         now = int(time.time())
-        lines = []
+        results = []
         for a in arrivals:
             ts = a["arrival_time"]
             if ts:
@@ -126,14 +120,24 @@ def get_trip_arrivals(trip_id: str, ctx: Context) -> str:
                 clock_time = datetime.fromtimestamp(ts).strftime("%I:%M %p").lstrip("0")
                 time_str = f"{minutes_away}m ({clock_time})"
             else:
+                minutes_away = None
+                clock_time = None
                 time_str = "N/A"
 
-            lines.append(f"{a['stop_name']} ({a['stop_id']}): {time_str}")
+            results.append(
+                {
+                    "stop_id": a["stop_id"],
+                    "stop_name": a["stop_name"],
+                    "minutes_away": minutes_away,
+                    "clock_time": clock_time,
+                    "time_display": time_str,
+                }
+            )
 
-        return "\n".join(lines)
+        return results
     except Exception as e:
         logger.exception(f"Error in get_trip_arrivals: {e}")
-        return f"Error fetching trip arrivals: {str(e)}"
+        raise
 
 
 # At the bottom of server.py

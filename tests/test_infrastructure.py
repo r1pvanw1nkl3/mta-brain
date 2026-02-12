@@ -58,7 +58,7 @@ def test_redis_state_store_get_zset():
     store = RedisStateStore(redis_client=mock_redis)
     assert store.get_zset("key") == {"a": 1, "b": 2}
     mock_redis.client.zrange.assert_called_once_with(
-        "key", 0, -1, withscores=True, byscore=True
+        "key", 0, float("inf"), withscores=True, byscore=True
     )
 
 

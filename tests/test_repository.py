@@ -1,7 +1,7 @@
-import time
 from unittest.mock import ANY, MagicMock, patch
 
 import transit_core.core.models as md
+from transit_core.config import get_settings
 from transit_core.core.repository import (
     Keys,
     StopReader,
@@ -9,6 +9,8 @@ from transit_core.core.repository import (
     TripReader,
     TripWriter,
 )
+
+config = get_settings()
 
 
 def test_trip_repository_update_trip_status():
@@ -45,17 +47,21 @@ def test_trip_repository_get_trip_status():
 
 
 def test_stop_repository_update_arrivals_board():
-    current_time = int(time.time())
+    now = 1700000000
     mock_state_store = MagicMock()
     repo = StopWriter(state_store=mock_state_store)
 
     stop_id = "S1"
     arrivals = {"T1": 1000, "T2": 2000}
 
-    repo.update_arrivals_board(stop_id, arrivals, current_time)
+    with patch("time.time", return_value=now):
+        repo.update_arrivals_board(stop_id, arrivals, now)
 
     mock_state_store.sync_set.assert_called_once_with(
-        Keys.arrivals(stop_id), arrivals, current_time - 300, ANY
+        Keys.arrivals(stop_id),
+        arrivals,
+        now - config.arrivals_window_past_seconds,
+        ANY,
     )
 
 
@@ -385,7 +391,7 @@ def test_stop_reader_drops_old_trains():
             "route_id": "1",
             "trip_headsign": "Gone",
             "direction": "N",
-            "arrival_timestamp": now - 400,  # 6m ago
+            "arrival_timestamp": now - (config.arrivals_window_past_seconds + 100),
         },
         {
             "trip_id": "RECENT_GHOST",

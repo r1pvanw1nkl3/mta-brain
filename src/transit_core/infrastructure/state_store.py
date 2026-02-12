@@ -48,7 +48,7 @@ class RedisStateStore:
             self._get_client().zadd(key, mapping)
             self._get_client().expire(key, expiry)
 
-    def get_zset(self, key: str, max_score: int = -1) -> dict[str, int]:
+    def get_zset(self, key: str, max_score: float = float("inf")) -> dict[str, int]:
         raw_data = self.redis.client.zrange(
             key, 0, max_score, withscores=True, byscore=True
         )

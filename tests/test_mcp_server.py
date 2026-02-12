@@ -6,16 +6,6 @@ import transit_core.core.models as md
 from transit_core.mcp.server import get_station_info, get_trip_arrivals, lifespan
 
 
-class MockRequestContext:
-    def __init__(self, lifespan_context):
-        self.lifespan_context = lifespan_context
-
-
-class MockContext:
-    def __init__(self, lifespan_context):
-        self.request_context = MockRequestContext(lifespan_context)
-
-
 @pytest.fixture
 def mock_stop_reader():
     return MagicMock()
@@ -28,9 +18,12 @@ def mock_trip_reader():
 
 @pytest.fixture
 def mock_ctx(mock_stop_reader, mock_trip_reader):
-    return MockContext(
-        {"stop_reader": mock_stop_reader, "trip_reader": mock_trip_reader}
-    )
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = {
+        "stop_reader": mock_stop_reader,
+        "trip_reader": mock_trip_reader,
+    }
+    return ctx
 
 
 def test_get_station_info_success(mock_ctx, mock_stop_reader):
@@ -50,9 +43,12 @@ def test_get_station_info_success(mock_ctx, mock_stop_reader):
     with patch("time.time", return_value=now):
         result = get_station_info("101N", mock_ctx)
 
-    assert "1 to Van Cortlandt Park: 5m" in result
-    assert "[LIVE]" in result
-    assert "[Trip ID: T1]" in result
+    assert len(result) == 1
+    assert result[0]["route"] == "1"
+    assert result[0]["destination"] == "Van Cortlandt Park"
+    assert result[0]["minutes_away"] == 5
+    assert result[0]["status"] == "LIVE"
+    assert result[0]["trip_id"] == "T1"
 
 
 def test_get_station_info_past_arrival(mock_ctx, mock_stop_reader):
@@ -72,21 +68,22 @@ def test_get_station_info_past_arrival(mock_ctx, mock_stop_reader):
     with patch("time.time", return_value=now):
         result = get_station_info("101N", mock_ctx)
 
-    assert "1 to Van Cortlandt Park: 0m" in result
+    assert result[0]["minutes_away"] == 0
 
 
 def test_get_station_info_no_data(mock_ctx, mock_stop_reader):
     mock_stop_reader.get_arrivals_board.return_value = []
 
     result = get_station_info("101N", mock_ctx)
-    assert "No arrival data found for stop 101N" in result
+    assert result == []
 
 
 def test_get_station_info_error(mock_ctx, mock_stop_reader):
     mock_stop_reader.get_arrivals_board.side_effect = Exception("DB Error")
 
-    result = get_station_info("101N", mock_ctx)
-    assert "Error fetching station info: DB Error" in result
+    with pytest.raises(Exception) as excinfo:
+        get_station_info("101N", mock_ctx)
+    assert "DB Error" in str(excinfo.value)
 
 
 def test_get_trip_arrivals_success(mock_ctx, mock_trip_reader):
@@ -103,14 +100,17 @@ def test_get_trip_arrivals_success(mock_ctx, mock_trip_reader):
     with patch("time.time", return_value=now):
         result = get_trip_arrivals("T1", mock_ctx)
 
-    assert "242 St (101N): 1m" in result
+    assert len(result) == 1
+    assert result[0]["stop_id"] == "101N"
+    assert result[0]["stop_name"] == "242 St"
+    assert result[0]["minutes_away"] == 1
 
 
 def test_get_trip_arrivals_no_data(mock_ctx, mock_trip_reader):
     mock_trip_reader.get_trip_arrivals.return_value = []
 
     result = get_trip_arrivals("T1", mock_ctx)
-    assert "No arrival data found for trip T1" in result
+    assert result == []
 
 
 def test_get_trip_arrivals_no_time(mock_ctx, mock_trip_reader):
@@ -124,14 +124,16 @@ def test_get_trip_arrivals_no_time(mock_ctx, mock_trip_reader):
     ]
 
     result = get_trip_arrivals("T1", mock_ctx)
-    assert "242 St (101N): N/A" in result
+    assert result[0]["minutes_away"] is None
+    assert result[0]["time_display"] == "N/A"
 
 
 def test_get_trip_arrivals_error(mock_ctx, mock_trip_reader):
     mock_trip_reader.get_trip_arrivals.side_effect = Exception("Redis Error")
 
-    result = get_trip_arrivals("T1", mock_ctx)
-    assert "Error fetching trip arrivals: Redis Error" in result
+    with pytest.raises(Exception) as excinfo:
+        get_trip_arrivals("T1", mock_ctx)
+    assert "Redis Error" in str(excinfo.value)
 
 
 @pytest.mark.anyio

@@ -111,8 +111,7 @@ class StopWriter:
         self.state_store.sync_set(
             Keys.arrivals(stop_id),
             board,
-            current_time
-            - 300,  # keep some old arrivals for matching, in case trains come early
+            current_time - config.arrivals_window_past_seconds,
             config.redis_gtfs_ttl,
         )
 
@@ -189,7 +188,7 @@ class StopReader:
             if not best_match and route_id != "???":
                 group_key = (route_id, dir_letter)
                 candidates = scheduled_groups.get(group_key, [])
-                min_diff = 900  # 15-minute window
+                min_diff = config.fuzzy_match_window_seconds
                 for cand in candidates:
                     if cand["trip_id"] in matched_static_ids:
                         continue
@@ -254,8 +253,10 @@ class StopReader:
                 if stop_id.endswith(("N", "S")) and s["direction"] != stop_id[-1]:
                     continue
 
-                # Drop trains that should have passed > 5 mins ago
-                if s["arrival_timestamp"] < (now_ts - 300):
+                # Drop trains that should have passed > window ago
+                if s["arrival_timestamp"] < (
+                    now_ts - config.arrivals_window_past_seconds
+                ):
                     continue
 
                 unified_board.append(
@@ -272,8 +273,7 @@ class StopReader:
         final_board = [
             train
             for train in unified_board
-            if train.arrival_time
-            >= (now_ts - 60)  # Allow 60s of "recently passed" for UX
+            if train.arrival_time >= (now_ts - config.recently_passed_filter_seconds)
         ]
 
         return sorted(final_board, key=lambda x: x.arrival_time)

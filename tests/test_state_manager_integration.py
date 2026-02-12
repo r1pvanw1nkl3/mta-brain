@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 import transit_core.redis_client as rc
@@ -34,7 +36,7 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     assert trip_status is not None
     assert trip_status.trip.trip_id == trip_id
 
-    # 4. Verify Raw Key Mappings and TTL (Optional but good for integration)
+    # 4. Verify Raw Key Mappings and TTL
     cfg = get_settings()
 
     # Trip key
@@ -48,3 +50,79 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     assert redis_client.client.exists(arrivals_key)
     ttl = redis_client.client.ttl(arrivals_key)
     assert 0 < ttl <= cfg.redis_gtfs_ttl
+
+
+@pytest.mark.filterwarnings("ignore:wait_container_is_ready")
+def test_feed_deduplication(redis_container):
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    redis_client = rc.RedisClient(host=host, port=port, decode_responses=True)
+    state_store = RedisStateStore(redis_client=redis_client)
+
+    feed_key = Keys.feed("G")
+    ts = 1700000000
+
+    # First time - should succeed
+    assert state_store.check_and_update_timestamp(feed_key, ts) is True
+    assert int(redis_client.client.get(feed_key)) == ts
+
+    # Second time with same timestamp - should fail
+    assert state_store.check_and_update_timestamp(feed_key, ts) is False
+
+    # Third time with older timestamp - should fail
+    assert state_store.check_and_update_timestamp(feed_key, ts - 1) is False
+
+    # Fourth time with newer timestamp - should succeed
+    assert state_store.check_and_update_timestamp(feed_key, ts + 1) is True
+    assert int(redis_client.client.get(feed_key)) == ts + 1
+
+
+@pytest.mark.filterwarnings("ignore:wait_container_is_ready")
+def test_multiple_concurrent_feeds(redis_container, feed_factory):
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    redis_client = rc.RedisClient(host=host, port=port, decode_responses=True)
+    state_store = RedisStateStore(redis_client=redis_client)
+    trip_repo = TripWriter(state_store=state_store)
+    stop_repo = StopWriter(state_store=state_store)
+
+    # Feed 1: Trip A at Stop S
+    feed1 = feed_factory(trip_id="TRIP_A", stop_id="STOP_S", arrival_offset=600)
+    # Feed 2: Trip B at Stop S
+    feed2 = feed_factory(trip_id="TRIP_B", stop_id="STOP_S", arrival_offset=900)
+
+    hydrate_realtime_data(feed1, trip_repo, stop_repo)
+    hydrate_realtime_data(feed2, trip_repo, stop_repo)
+
+    # Both should be present on the same board
+    arrivals = state_store.get_zset(Keys.arrivals("STOP_S"))
+    assert "TRIP_A" in arrivals
+    assert "TRIP_B" in arrivals
+    assert arrivals["TRIP_A"] > time.time()
+    assert arrivals["TRIP_B"] > arrivals["TRIP_A"]
+
+
+@pytest.mark.filterwarnings("ignore:wait_container_is_ready")
+def test_ttl_expiration(redis_container, feed_factory):
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    redis_client = rc.RedisClient(host=host, port=port, decode_responses=True)
+    state_store = RedisStateStore(redis_client=redis_client)
+    trip_repo = TripWriter(state_store=state_store)
+    stop_repo = StopWriter(state_store=state_store)
+
+    stop_id = "TTL_STOP"
+    feed = feed_factory(trip_id="TTL_TRIP", stop_id=stop_id, arrival_offset=600)
+
+    # Set a very short TTL for testing
+    # Since we can't easily change settings globally here without affecting others
+    # we can just manually set a short TTL if we wanted to test expiration
+    # but for integration tests, we usually just verify it *has* a TTL.
+    hydrate_realtime_data(feed, trip_repo, stop_repo)
+
+    arrivals_key = Keys.arrivals(stop_id)
+    redis_client.client.expire(arrivals_key, 1)  # 1 second
+
+    assert redis_client.client.exists(arrivals_key)
+    time.sleep(1.1)
+    assert not redis_client.client.exists(arrivals_key)
