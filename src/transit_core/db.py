@@ -2,7 +2,7 @@ import logging
 import time
 
 from psycopg.rows import dict_row
-from psycopg_pool import ConnectionPool
+from psycopg_pool import AsyncConnectionPool, ConnectionPool
 
 from transit_core.core.exceptions import DatabaseError
 
@@ -23,6 +23,18 @@ def create_db_pool(connection_url: str):
         open=True,
     )
     return pool
+
+
+def create_async_db_pool(connection_url: str):
+    masked_url = connection_url.split("@")[-1] if "@" in connection_url else "..."
+    logger.info("Creating Async DB connection pool", extra={"db_host": masked_url})
+    return AsyncConnectionPool(
+        conninfo=connection_url,
+        min_size=2,
+        max_size=10,
+        kwargs={"row_factory": dict_row, "prepare_threshold": 0},
+        open=False,
+    )
 
 
 def wait_for_db(pool):

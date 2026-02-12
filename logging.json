@@ -14,13 +14,13 @@
     "console": {
       "class": "logging.StreamHandler",
       "formatter": "simple_console",
-      "stream": "ext://sys.stdout",
+      "stream": "ext://sys.stderr",
       "level": "INFO"
     },
     "file_json": {
       "class": "logging.handlers.RotatingFileHandler",
       "formatter": "json_file",
-      "filename": "logs/app.log",
+      "filename": "/Users/christopherstone/git/mta-brain/logs/app.log",
       "maxBytes": 10485760,
       "backupCount": 5,
       "level": "DEBUG"

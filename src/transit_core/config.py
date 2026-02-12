@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_name: str = "mta_brain"
 
-    etl_db_user: str
-    etl_db_password: str
+    etl_db_user: str | None = None
+    etl_db_password: str | None = None
 
     app_db_user: str
     app_db_password: str

@@ -23,13 +23,12 @@ def test_database_url_generation(mock_env_vars):
 
 
 def test_missing_env_variable(monkeypatch, mock_env_vars):
-    monkeypatch.delenv("ETL_DB_PASSWORD", raising=False)
     monkeypatch.delenv("APP_DB_PASSWORD", raising=False)
 
     with pytest.raises(ValidationError) as exc_info:
         Settings(_env_file=None)
 
-    assert "etl_db_password" in str(exc_info.value)
+    assert "app_db_password" in str(exc_info.value)
     assert "Field required" in str(exc_info.value)
 
 
