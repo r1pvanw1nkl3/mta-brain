@@ -17,7 +17,7 @@ MTA Brain is a high-performance transit data engine built to ingest, process, an
 
 3.  **Bootstrap Data**
     ```bash
-    uv run reload-all-gtfs  # Initial load of static subway data
+    uv run gtfs-static-reload-all  # Initial load of static subway data
     ```
 
 4.  **Start Services**

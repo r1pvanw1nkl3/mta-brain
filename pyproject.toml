@@ -65,7 +65,7 @@ quote-style = "double"
 indent-style = "space"
 
 [project.scripts]
-reload-gtfs = "services.static_etl.etl_runner:run_reload"
-reload-all-gtfs = "services.static_etl.etl_runner:reload_all"
+gtfs-static-reload = "services.static_etl.etl_runner:run_reload"
+gtfs-static-reload-all = "services.static_etl.etl_runner:reload_all"
 live-hydrator = "services.subway_live_hydrator.runner:runner"
 api = "transit_core.api.cli:main"
