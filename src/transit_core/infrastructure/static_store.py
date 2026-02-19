@@ -10,6 +10,58 @@ class PostgresStaticStore:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
 
+    def fuzzy_station_search(
+        self,
+        search_query: str,
+        ilike_query: str,
+        has_single_char: bool,
+        regex_pattern: str | None = None,
+    ):
+        query = """
+                SELECT
+                    stop_id,
+                    stop_name,
+                    ROW_NUMBER() OVER (
+                        ORDER BY
+                        (CASE WHEN %s THEN stop_name ~* %s ELSE FALSE END) DESC,
+                        similarity(stop_name, %s) DESC
+                    ) as rank
+                FROM stops
+                WHERE
+                    parent_station IS NULL
+                    AND (stop_name %% %s OR stop_name ILIKE %s)
+                ORDER BY
+                   rank
+                LIMIT 5;
+                """
+
+        try:
+            with self.pool.connection() as conn:
+                results = conn.execute(
+                    query,
+                    (
+                        has_single_char,
+                        regex_pattern,
+                        search_query,
+                        search_query,
+                        ilike_query,
+                    ),
+                ).fetchall()
+                return results
+        except Exception as e:
+            logger.exception(
+                "Failed when performing fuzzy station search:",
+                extra={
+                    "search_query": search_query,
+                    "ilike_query": ilike_query,
+                    "has_single_char": has_single_char,
+                    "regex_pattern": regex_pattern,
+                    "error": str(e),
+                },
+            )
+
+        return []
+
     def get_scheduled_arrivals(self, stop_id: str, lookahead_minutes) -> list[dict]:
         now = datetime.now()
         day_name = now.strftime("%A").lower()

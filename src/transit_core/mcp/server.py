@@ -140,6 +140,20 @@ def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict]:
         raise
 
 
+@mcp.tool()
+def station_search(search_string: str, ctx: Context) -> list[dict]:
+    """
+    Perform a search for a user
+
+    :param search_string: Description
+    :type search_string: str
+    :param ctx: Description
+    :type ctx: Context
+    :return: Description
+    :rtype: list[dict]
+    """
+
+
 # At the bottom of server.py
 if __name__ == "__main__":
     mcp.run()

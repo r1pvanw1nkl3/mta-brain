@@ -29,3 +29,11 @@ class StaticStore(Protocol):
     def get_trip_stop_times(self, trip_id: str) -> Dict[str, int]: ...
 
     def get_stop_names(self, stop_ids: list[str]) -> Dict[str, str]: ...
+
+    def fuzzy_station_search(
+        self,
+        search_query: str,
+        ilike_query: str,
+        has_single_char: bool,
+        regex_pattern: str | None = None,
+    ): ...

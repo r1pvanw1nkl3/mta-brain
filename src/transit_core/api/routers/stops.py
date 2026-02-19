@@ -12,3 +12,11 @@ async def get_arrivals(stop_id: str, reader: StopReader = Depends(get_stop_reade
     arrivals = reader.get_arrivals_board(stop_id)
 
     return arrivals
+
+
+@router.get("/stops/search/{search_string}")
+async def stop_search(
+    search_string: str, reader: StopReader = Depends(get_stop_reader)
+):
+    result = reader.fuzzy_station_search(search_string)
+    return result

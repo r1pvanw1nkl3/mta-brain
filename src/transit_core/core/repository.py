@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 
 import transit_core.core.models as md
@@ -277,3 +278,27 @@ class StopReader:
         ]
 
         return sorted(final_board, key=lambda x: x.arrival_time)
+
+    def fuzzy_station_search(self, search_string: str):
+        params = self._get_station_search_params(search_string)
+
+        return self.static_store.fuzzy_station_search(
+            params["query"],
+            params["ilike_query"],
+            params["has_single_char"],
+            params["regex_pattern"],
+        )
+
+    def _get_station_search_params(self, search_string: str):
+        words = search_string.split()
+        single_char = [w for w in words if len(w) == 1 and w.isalpha()]
+        cleaned_string = re.sub(
+            r"(\d+)(st|nd|rd|th)\b", r"\1", search_string, flags=re.IGNORECASE
+        )
+        params = {
+            "query": cleaned_string,
+            "ilike_query": f"%{cleaned_string}%",
+            "has_single_char": len(single_char) > 0,
+            "regex_pattern": f"\\y({'|'.join(single_char)})\\y" if single_char else "",
+        }
+        return params
