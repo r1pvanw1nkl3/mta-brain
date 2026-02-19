@@ -295,6 +295,8 @@ class StopReader:
         cleaned_string = re.sub(
             r"(\d+)(st|nd|rd|th)\b", r"\1", search_string, flags=re.IGNORECASE
         )
+        cleaned_string = re.sub(r"\bstreet\b", "st", cleaned_string)
+        cleaned_string = re.sub(r"\bavenue\b", "av", cleaned_string)
         params = {
             "query": cleaned_string,
             "ilike_query": f"%{cleaned_string}%",

@@ -3,7 +3,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from mcp.server.fastmcp import Context, FastMCP
+from fastmcp import Context, FastMCP
 
 from transit_core.config import get_settings
 from transit_core.core.repository import StopReader, TripReader
@@ -47,20 +47,44 @@ async def lifespan(server: FastMCP):
     redis_client.client.close()
 
 
-mcp = FastMCP("MTA-Brain", lifespan=lifespan)
+mcp = FastMCP(
+    "MTA-Brain",
+    lifespan=lifespan,
+    instructions="""
+                You are 'NYC Transit Brain,' an authentic, adaptive AI collaborator.
+                Your goal is to help users navigate
+                the NYC subway system with empathy and candor.
+
+                OPERATIONAL PROTOCOLS:
+                1. Mandatory Resolution:
+                If a user provides a station name, you MUST call 'station_search' first.
+                Never guess a GTFS Stop ID.
+                2. Data Privacy:
+                NEVER expose internal IDs (Stop IDs like 'A20' or Trip IDs) to the user.
+                Always use human-friendly station names and route letters.
+                3. Disambiguation:
+                For stations with multiple matches (e.g., '23 St'),
+                use the 'routes' field to help the user choose the correct one
+                (e.g., 'The 23rd St on the F/M lines').
+                4. Conversational Style:
+                Be helpful and grounded. If service is delayed, be direct but supportive
+              """,
+)
 
 
 @mcp.tool()
 def get_station_info(stop_id: str, ctx: Context) -> list[dict]:
     """
-    Fetch live and scheduled arrival times for a specific NYC subway stop.
+    Fetch live and scheduled arrival times for a stop using a specific GTFS ID.
 
-    Use this tool when you need to know what trains are ariving at a stop,
-    their destinations, and how many minutes away they are.
+    Use this tool ONLY when you have a valid GTFS Stop ID (e.g., 'L06', 'A20').
+    If you only have a station name, you must call 'station_search' first
+    to resolve it to an ID.
 
-    :param stop_id: The GTFS Stop ID. Use the base ID (e.g., 'A20') for all arrivals,
-                    or append 'N' or 'S' (e.g., 'A20N') for specific directions.
-    :return: A list of upcoming train arrivals with routes and destinations.
+    :param stop_id: The internal GTFS Stop ID. Use the parent ID for all
+                    arrivals at that station.
+    :return: A list of upcoming train arrivals with routes, destinations,
+            and minutes until arrival.
     """
     logger.info(f"Tool get_station_info called with stop_id: {stop_id}")
 
@@ -143,15 +167,28 @@ def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict]:
 @mcp.tool()
 def station_search(search_string: str, ctx: Context) -> list[dict]:
     """
-    Perform a search for a user
+    Find the GTFS Stop ID for an NYC subway station using its common name.
 
-    :param search_string: Description
-    :type search_string: str
-    :param ctx: Description
-    :type ctx: Context
-    :return: Description
-    :rtype: list[dict]
+    Use this tool FIRST whenever a user mentions a station name (e.g., "Bedford Av",
+    "23rd St", "Atlantic Av"). You MUST use this tool to obtain the correct
+    'stop_id' before calling get_station_info.
+
+    Since many NYC stations share names (like '23 St'), this tool returns
+    multiple ranked results. Use the 'routes' field in the results to
+    disambiguate which station the user is likely looking for.
+
+    :param search_string: The station name or approximate name provided by the user.
+    :return: List of matches including 'stop_id' (internal GTFS stop ID),
+    'stop_name', 'routes' (lines served), and 'rank'.
+    Use the 'routes' to help the user select a station.
+    DO NOT show the stop_id to the user.
     """
+    logger.info(f"Tool station_search called with search string: {search_string}")
+    try:
+        reader = ctx.request_context.lifespan_context["stop_reader"]
+        return reader.fuzzy_station_search(search_string)
+    except Exception as e:
+        logger.exception(f"Error in station_search: {e}")
 
 
 # At the bottom of server.py

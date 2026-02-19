@@ -19,20 +19,29 @@ class PostgresStaticStore:
     ):
         query = """
                 SELECT
-                    stop_id,
-                    stop_name,
+                    s.stop_id,
+                    s.stop_name,
+                    mss.routes,
                     ROW_NUMBER() OVER (
                         ORDER BY
-                        (CASE WHEN %s THEN stop_name ~* %s ELSE FALSE END) DESC,
-                        similarity(stop_name, %s) DESC
+                            (LOWER(REPLACE(stop_name, '-', ' ')) = LOWER(%s)) DESC,
+
+                            (REPLACE(stop_name, '-', ' ') ILIKE (%s || '%%')) DESC,
+
+                            (CASE WHEN %s THEN stop_name ~* %s ELSE FALSE END) DESC,
+
+                            similarity(REPLACE(stop_name, '-', ' '), %s) DESC
                     ) as rank
-                FROM stops
+                FROM stops s LEFT JOIN mv_station_services mss
+                on s.stop_id = mss.stop_id
                 WHERE
                     parent_station IS NULL
-                    AND (stop_name %% %s OR stop_name ILIKE %s)
-                ORDER BY
-                   rank
-                LIMIT 5;
+                    AND (
+                        REPLACE(stop_name, '-', ' ') %% %s
+                        OR REPLACE(stop_name, '-', ' ') ILIKE %s
+                    )
+                ORDER BY rank
+                LIMIT 10;
                 """
 
         try:
@@ -40,6 +49,8 @@ class PostgresStaticStore:
                 results = conn.execute(
                     query,
                     (
+                        search_query,
+                        ilike_query,
                         has_single_char,
                         regex_pattern,
                         search_query,
