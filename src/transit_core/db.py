@@ -1,7 +1,8 @@
 import logging
 import time
 
-from psycopg.rows import dict_row
+from psycopg import Connection
+from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool, ConnectionPool
 
 from transit_core.core.exceptions import DatabaseError
@@ -9,13 +10,13 @@ from transit_core.core.exceptions import DatabaseError
 logger = logging.getLogger(__name__)
 
 
-def create_db_pool(connection_url: str):
+def create_db_pool(connection_url: str) -> ConnectionPool[Connection[DictRow]]:
     """
     Creates the connection pool
     """
     masked_url = connection_url.split("@")[-1] if "@" in connection_url else "..."
     logger.info("Creating DB connection pool", extra={"db_host": masked_url})
-    pool = ConnectionPool(
+    pool: ConnectionPool[Connection[DictRow]] = ConnectionPool(
         conninfo=connection_url,
         min_size=2,
         max_size=10,

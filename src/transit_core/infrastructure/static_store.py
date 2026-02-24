@@ -1,13 +1,16 @@
 from datetime import date, datetime, timedelta
 from logging import getLogger
+from typing import Any, Optional
 
+from psycopg import Connection, sql
+from psycopg.rows import DictRow
 from psycopg_pool import ConnectionPool
 
 logger = getLogger(__name__)
 
 
 class PostgresStaticStore:
-    def __init__(self, pool: ConnectionPool):
+    def __init__(self, pool: ConnectionPool[Connection[DictRow]]):
         self.pool = pool
 
     def fuzzy_station_search(
@@ -81,10 +84,10 @@ class PostgresStaticStore:
         start_time = (now - timedelta(minutes=30)).strftime("%H:%M:%S")
         end_time = (now + timedelta(minutes=lookahead_minutes)).strftime("%H:%M:%S")
 
-        query = f"""
+        query = sql.SQL("""
             WITH active_service AS (
                 SELECT service_id FROM calendar
-                WHERE {day_name} = 1
+                WHERE {column_name} = 1
                   AND %s BETWEEN start_date AND end_date
                   AND service_id NOT IN (
                       SELECT service_id FROM calendar_dates
@@ -108,7 +111,9 @@ class PostgresStaticStore:
             WHERE (s.parent_station = %s OR s.stop_id = %s)
               AND st.arrival_time BETWEEN %s::interval AND %s::interval
             ORDER BY st.arrival_time ASC;
-        """
+        """)
+
+        query = query.format(column_name=sql.Identifier(day_name))
 
         try:
             with self.pool.connection() as conn:
@@ -148,7 +153,8 @@ class PostgresStaticStore:
         try:
             with self.pool.connection() as conn:
                 # Use row_factory to get a dict if not already configured in pool
-                row = conn.execute(query, (trip_id,)).fetchone()
+                cur = conn.execute(query, (trip_id,))
+                row: Optional[dict[str, Any]] = cur.fetchone()
                 return row if row else None
         except Exception:
             logger.exception(

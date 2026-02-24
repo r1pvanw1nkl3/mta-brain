@@ -1,0 +1,24 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - mta-brain-net
+
+  api:
+    restart: always
+    # No volumes used in prod; we use the baked-in code from the image
+
+  hydrator:
+    restart: always
+
+volumes:
+  caddy_data:
+  caddy_config:

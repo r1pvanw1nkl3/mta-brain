@@ -1,0 +1,22 @@
+services:
+  api:
+    volumes:
+      - .:/app  # Maps your local code into the container
+      - /app/.venv # Prevents local .venv (if any) from shadowing container's .venv
+    ports:
+      - "8000:8000"
+    environment:
+      - DEV_MODE=true
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  hydrator:
+    volumes:
+      - .:/app
+      - /app/.venv
+
+  postgres:
+    ports:
+      - "5432:5432" # Allows TablePlus/DBeaver to connect to localhost:5432

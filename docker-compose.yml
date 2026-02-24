@@ -1,59 +1,94 @@
-version: '3.8'
-
 services:
-  db:
-    image: postgres:16
-    container_name: mta-brain-postgres
-    restart: always
-
-    env_file:
-      - .env
-
+  api:
+    build: .
+    image: transit-brain-nyc:latest
+    env_file: .env
     environment:
-      POSTGRES_USER: ${ETL_DB_USER}
-      POSTGRES_PASSWORD: ${ETL_DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=mta_brain
+      - APP_DB_USER=${APP_DB_USER}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      flyway:
+        condition: service_completed_successfully
+    networks:
+      - mta-brain-net
 
-      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+  hydrator:
+    build: .
+    image: transit-brain-nyc:latest
+    # Points to: src/services/subway_live_hydrator/runner.py
+    command: python -m services.subway_live_hydrator.runner
+    env_file: .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - mta-brain-net
 
-    ports:
-      - "5432:5432"
-
+  postgres:
+    image: postgres:16-alpine
+    shm_size: 128mb
+    environment:
+      - POSTGRES_DB=mta_brain
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - APP_DB_USER=${APP_DB_USER}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD}
+      - ETL_DB_USER=${ETL_DB_USER}
+      - ETL_DB_PASSWORD=${ETL_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db_init:/docker-entrypoint-initdb.d:ro
+      - ./db_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mta_brain"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mta-brain-net
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mta-brain-net
 
   flyway:
     image: flyway/flyway
     container_name: mta-brain-flyway
-
     volumes:
       - ./sql:/flyway/sql
-
     environment:
-      FLYWAY_URL: jdbc:postgresql://db:5432/${DB_NAME}
-      FLYWAY_USER: ${ETL_DB_USER}
-      FLYWAY_PASSWORD: ${ETL_DB_PASSWORD}
-      FLYWAY_LOCATIONS: filesystem:/flyway/sql
-
-      FLYWAY_CONNECT_RETRIES: 60
-
+      - FLYWAY_URL=jdbc:postgresql://postgres:5432/${DB_NAME}
+      - FLYWAY_USER=${ETL_DB_USER}
+      - FLYWAY_PASSWORD=${ETL_DB_PASSWORD}
+      - FLYWAY_LOCATIONS=filesystem:/flyway/sql
+      - FLYWAY_CONNECT_RETRIES=60
     command: -baselineOnMigrate=true migrate
-
     depends_on:
-      - db
+      postgres:
+        condition: service_healthy
+    networks:
+      - mta-brain-net
 
-  redis:
-    image: redis:7-alpine
-    container_name: mta_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning
-
-
+networks:
+  mta-brain-net:
+    driver: bridge
 
 volumes:
   postgres_data:
-  redis_data:
