@@ -1,4 +1,5 @@
 import time
+from typing import cast
 
 import pytest
 
@@ -42,13 +43,13 @@ def test_redis_integration_lifecycle(redis_container, feed_factory):
     # Trip key
     trip_key = Keys.trip(trip_id)
     assert redis_client.client.exists(trip_key)
-    ttl = redis_client.client.ttl(trip_key)
+    ttl = cast(int, redis_client.client.ttl(trip_key))
     assert 0 < ttl <= cfg.trip_metadata_ttl
 
     # Departures key
     arrivals_key = Keys.arrivals(stop_id)
     assert redis_client.client.exists(arrivals_key)
-    ttl = redis_client.client.ttl(arrivals_key)
+    ttl = cast(int, redis_client.client.ttl(arrivals_key))
     assert 0 < ttl <= cfg.redis_gtfs_ttl
 
 
@@ -64,7 +65,9 @@ def test_feed_deduplication(redis_container):
 
     # First time - should succeed
     assert state_store.check_and_update_timestamp(feed_key, ts) is True
-    assert int(redis_client.client.get(feed_key)) == ts
+    val = cast(str, redis_client.client.get(feed_key))
+    assert val is not None
+    assert int(val) == ts
 
     # Second time with same timestamp - should fail
     assert state_store.check_and_update_timestamp(feed_key, ts) is False
@@ -74,7 +77,9 @@ def test_feed_deduplication(redis_container):
 
     # Fourth time with newer timestamp - should succeed
     assert state_store.check_and_update_timestamp(feed_key, ts + 1) is True
-    assert int(redis_client.client.get(feed_key)) == ts + 1
+    val = cast(str, redis_client.client.get(feed_key))
+    assert val is not None
+    assert int(val) == ts + 1
 
 
 @pytest.mark.filterwarnings("ignore:wait_container_is_ready")

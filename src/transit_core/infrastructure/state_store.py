@@ -1,14 +1,11 @@
 import logging
 import threading
 from contextlib import contextmanager
-from typing import Dict, Union
+from typing import cast
 
 from transit_core.redis_client import RedisClient
 
 logger = logging.getLogger(__name__)
-
-RedisScore = Union[int, float]
-Mapping = Dict[str, RedisScore]
 
 
 class RedisStateStore:
@@ -40,23 +37,28 @@ class RedisStateStore:
         self._get_client().set(key, value, ex=expiry)
 
     def get_kv(self, key: str) -> str | None:
-        return self.redis.client.get(key)
+        return cast(str | None, self.redis.client.get(key))
 
-    def sync_set(self, key: str, mapping: Mapping, min_score: int, expiry) -> None:
+    def sync_set(
+        self, key: str, mapping: dict[str, int], min_score: int, expiry
+    ) -> None:
         self._get_client().zremrangebyscore(key, 0, min_score)
         if mapping:
             self._get_client().zadd(key, mapping)
             self._get_client().expire(key, expiry)
 
-    def get_zset(self, key: str, max_score: float = float("inf")) -> dict[str, int]:
-        raw_data = self.redis.client.zrange(
-            key, 0, max_score, withscores=True, byscore=True
+    def get_zset(
+        self, key: str, max_score: int | float = float("inf")
+    ) -> dict[str, int]:
+        raw_data = cast(
+            list[tuple[str, float]],
+            self.redis.client.zrangebyscore(key, 0, max_score, withscores=True),
         )
         return {member: int(score) for member, score in raw_data}
 
     def check_and_update_timestamp(self, key: str, timestamp: int) -> bool:
         client = self.redis.client
-        last_ts_raw = client.get(key)
+        last_ts_raw = cast(str | bytes | None, client.get(key))
         try:
             last_ts = int(last_ts_raw) if last_ts_raw else 0
         except (ValueError, TypeError):

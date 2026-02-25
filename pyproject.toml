@@ -35,6 +35,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.14.12",
     "testcontainers>=4.14.0",
+    "ty>=0.0.18",
 ]
 
 [tool.setuptools.packages.find]

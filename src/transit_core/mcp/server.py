@@ -73,7 +73,7 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-def get_station_info(stop_id: str, ctx: Context) -> list[dict]:
+def get_station_info(stop_id: str, ctx: Context) -> list[dict] | None:
     """
     Fetch live and scheduled arrival times for a stop using a specific GTFS ID.
 
@@ -87,6 +87,10 @@ def get_station_info(stop_id: str, ctx: Context) -> list[dict]:
             and minutes until arrival.
     """
     logger.info(f"Tool get_station_info called with stop_id: {stop_id}")
+
+    if ctx.request_context is None:
+        logger.error("station_search called without a request context")
+        return None
 
     try:
         # lifespan_context is stored in request_context
@@ -120,7 +124,7 @@ def get_station_info(stop_id: str, ctx: Context) -> list[dict]:
 
 
 @mcp.tool()
-def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict]:
+def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict] | None:
     """
     Fetch all upcoming stop arrivals for a specific trip (train).
 
@@ -131,6 +135,11 @@ def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict]:
     :return: A list of stops and arrival times for the trip.
     """
     logger.info(f"Tool get_trip_arrivals called with trip_id: {trip_id}")
+
+    if ctx.request_context is None:
+        logger.error("station_search called without a request context")
+        return None
+
     try:
         reader = ctx.request_context.lifespan_context["trip_reader"]
         arrivals = reader.get_trip_arrivals(trip_id)
@@ -165,7 +174,7 @@ def get_trip_arrivals(trip_id: str, ctx: Context) -> list[dict]:
 
 
 @mcp.tool()
-def station_search(search_string: str, ctx: Context) -> list[dict]:
+def station_search(search_string: str, ctx: Context) -> list[dict] | None:
     """
     Find the GTFS Stop ID for an NYC subway station using its common name.
 
@@ -183,6 +192,11 @@ def station_search(search_string: str, ctx: Context) -> list[dict]:
     Use the 'routes' to help the user select a station.
     DO NOT show the stop_id to the user.
     """
+
+    if ctx.request_context is None:
+        logger.error("station_search called without a request context")
+        return None
+
     logger.info(f"Tool station_search called with search string: {search_string}")
     try:
         reader = ctx.request_context.lifespan_context["stop_reader"]

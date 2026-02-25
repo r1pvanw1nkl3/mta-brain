@@ -214,6 +214,7 @@ def test_trip_reader_get_trip_status():
     json_data = '{"trip": {"trip_id": "T1", "route_id": "R1", "start_date": 20260206}}'
     mock_state_store.get_kv.return_value = json_data
     status = reader.get_trip_status("T1")
+    assert status is not None
     assert status.trip.trip_id == "T1"
 
 

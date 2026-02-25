@@ -21,6 +21,7 @@ def test_database_connection():
             with conn.cursor() as cur:
                 cur.execute("SELECT 1 as val")
                 row = cur.fetchone()
+                assert row is not None
                 assert row["val"] == 1
     finally:
         pool.close()

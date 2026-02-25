@@ -7,10 +7,10 @@ from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 
 import transit_core.core.models as models
-import transit_core.core.protos.gtfs_realtime_pb2 as pb
 from transit_core.config import get_settings
 from transit_core.core.exceptions import FeedFetchError, FeedParseError
 from transit_core.core.protos import nyct_subway_pb2
+from transit_core.core.protos.gtfs_realtime_pb2 import FeedMessage  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def fetch_raw_feed(feed_url: str):
                     "size_bytes": len(response.content),
                 },
             )
-            feed = pb.FeedMessage()
+            feed = FeedMessage()
             feed.ParseFromString(response.content)
             feed_dict = MessageToDict(
                 feed,

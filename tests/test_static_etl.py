@@ -16,8 +16,14 @@ def test_truncate_tables():
 
     db_loader.truncate_tables(mock_conn, schema="test_schema")
 
-    expected_tables = ", ".join([f"test_schema.{t}" for t in db_loader.GTFS_TABLES])
-    mock_cursor.execute.assert_called_once_with(f"TRUNCATE {expected_tables} CASCADE")
+    # Verify execute was called with a Composed object that represents the right SQL
+    args, _ = mock_cursor.execute.call_args
+    sql_obj = args[0]
+    sql_str = sql_obj.as_string(None)
+
+    assert "TRUNCATE" in sql_str
+    assert '"test_schema"."agency"' in sql_str
+    assert "CASCADE" in sql_str
 
 
 def test_load_table_success():
@@ -33,9 +39,12 @@ def test_load_table_success():
 
     # Verify COPY command
     args, _ = mock_cursor.copy.call_args
-    sql = args[0]
-    assert "COPY test_schema.stops (stop_id, stop_name)" in sql
-    assert "FROM STDIN" in sql
+    sql_obj = args[0]
+    sql_str = sql_obj.as_string(None)
+
+    assert 'COPY "test_schema"."stops"' in sql_str
+    assert '"stop_id", "stop_name"' in sql_str
+    assert "FROM STDIN" in sql_str
 
     # Verify data writing - logic in db_loader reads in chunks
     assert mock_copy.write.called

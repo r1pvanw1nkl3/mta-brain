@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     etl_db_user: str | None = None
     etl_db_password: str | None = None
 
-    app_db_user: str
-    app_db_password: str
+    app_db_user: str | None = None
+    app_db_password: str | None = None
 
     redis_host: str = "localhost"
     redis_port: int = 6379

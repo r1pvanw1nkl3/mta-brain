@@ -54,11 +54,11 @@ def test_redis_state_store_sync_set():
 
 def test_redis_state_store_get_zset():
     mock_redis = MagicMock()
-    mock_redis.client.zrange.return_value = [("a", 1.0), ("b", 2.0)]
+    mock_redis.client.zrangebyscore.return_value = [("a", 1.0), ("b", 2.0)]
     store = RedisStateStore(redis_client=mock_redis)
     assert store.get_zset("key") == {"a": 1, "b": 2}
-    mock_redis.client.zrange.assert_called_once_with(
-        "key", 0, float("inf"), withscores=True, byscore=True
+    mock_redis.client.zrangebyscore.assert_called_once_with(
+        "key", 0, float("inf"), withscores=True
     )
 
 

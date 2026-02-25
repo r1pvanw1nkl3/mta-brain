@@ -2,7 +2,7 @@ import csv
 import logging
 from typing import IO, Dict
 
-from psycopg import Connection, Cursor
+from psycopg import Connection, Cursor, sql
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +19,16 @@ GTFS_TABLES = [
 
 
 def truncate_tables(conn: Connection, schema: str = "public"):
-    tables_with_schema = [f"{schema}.{t}" for t in GTFS_TABLES]
-    tables_sql = ", ".join(tables_with_schema)
     with conn.cursor() as cur:
         logger.info(
             "Truncating tables", extra={"schema": schema, "tables": GTFS_TABLES}
         )
-        cur.execute(f"TRUNCATE {tables_sql} CASCADE")
+
+        table_identifiers = [sql.Identifier(schema, t) for t in GTFS_TABLES]
+        query = sql.SQL("TRUNCATE {} CASCADE").format(
+            sql.SQL(", ").join(table_identifiers)
+        )
+        cur.execute(query)
 
 
 def load_table(cur: Cursor, table_name: str, file_obj: IO, schema: str):
@@ -48,14 +51,15 @@ def load_table(cur: Cursor, table_name: str, file_obj: IO, schema: str):
             raise ValueError(f"Unsafe column name detected in {table_name}: {col}")
         clean_columns.append(col)
 
-    columns_sql = ", ".join(clean_columns)
-
-    sql = (
-        f"COPY {schema}.{table_name} ({columns_sql}) "
-        "FROM STDIN WITH (FORMAT CSV, HEADER FALSE)"
+    query = sql.SQL(
+        "COPY {}.{} ({}) FROM STDIN WITH (FORMAT CSV, HEADER FALSE)"
+    ).format(
+        sql.Identifier(schema),
+        sql.Identifier(table_name),
+        sql.SQL(", ").join(map(sql.Identifier, clean_columns)),
     )
 
-    with cur.copy(sql) as copy:
+    with cur.copy(query) as copy:
         while data := file_obj.read(8192):
             copy.write(data)
 

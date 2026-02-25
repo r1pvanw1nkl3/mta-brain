@@ -1,5 +1,5 @@
 from datetime import timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -61,10 +61,9 @@ def test_get_trip_stop_times(mock_pool):
 
     store = PostgresStaticStore(pool)
     # Mock _to_epoch to return a fixed value
-    store._to_epoch = MagicMock(return_value=12345)
-
-    times = store.get_trip_stop_times("T1")
-    assert times == {"S1": 12345}
+    with patch.object(store, "_to_epoch", return_value=12345):
+        times = store.get_trip_stop_times("T1")
+        assert times == {"S1": 12345}
 
 
 def test_get_scheduled_arrivals(mock_pool):
@@ -80,12 +79,11 @@ def test_get_scheduled_arrivals(mock_pool):
     conn.execute.return_value.fetchall.return_value = [row]
 
     store = PostgresStaticStore(pool)
-    store._to_epoch = MagicMock(return_value=12345)
-
-    arrivals = store.get_scheduled_arrivals("S1", 60)
-    assert len(arrivals) == 1
-    assert arrivals[0]["arrival_timestamp"] == 12345
-    assert arrivals[0]["trip_id"] == "T1"
+    with patch.object(store, "_to_epoch", return_value=12345):
+        arrivals = store.get_scheduled_arrivals("S1", 60)
+        assert len(arrivals) == 1
+        assert arrivals[0]["arrival_timestamp"] == 12345
+        assert arrivals[0]["trip_id"] == "T1"
 
 
 def test_get_trip_stop_times_suffix_fallback(mock_pool):

@@ -14,7 +14,7 @@ def test_fetch_raw_feed_success(mock_env_vars):
     with (
         patch("requests.get") as mock_get,
         patch(
-            "transit_core.core.protos.gtfs_realtime_pb2.FeedMessage"
+            "services.subway_live_hydrator.feed_parser.FeedMessage"
         ) as MockFeedMessage,
         patch(
             "services.subway_live_hydrator.feed_parser.MessageToDict"
@@ -52,7 +52,7 @@ def test_fetch_raw_feed_retry_success(mock_env_vars):
     """Test that it retries on failure and eventually succeeds."""
     with (
         patch("requests.get") as mock_get,
-        patch("transit_core.core.protos.gtfs_realtime_pb2.FeedMessage"),
+        patch("services.subway_live_hydrator.feed_parser.FeedMessage"),
         patch(
             "services.subway_live_hydrator.feed_parser.MessageToDict"
         ) as mock_to_dict,
@@ -63,7 +63,11 @@ def test_fetch_raw_feed_retry_success(mock_env_vars):
         mock_response_ok.status_code = 200
         mock_response_ok.content = b"content"
 
-        mock_get.side_effect = [requests.ConnectionError, mock_response_ok]
+        mock_get.side_effect = [
+            requests.ConnectionError,
+            mock_response_ok,
+            mock_response_ok,
+        ]
         mock_to_dict.return_value = {}
 
         # Execute

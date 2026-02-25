@@ -76,7 +76,9 @@ class PostgresStaticStore:
 
         return []
 
-    def get_scheduled_arrivals(self, stop_id: str, lookahead_minutes) -> list[dict]:
+    def get_scheduled_arrivals(
+        self, stop_id: str, lookahead_minutes: int = 60
+    ) -> list[dict]:
         now = datetime.now()
         day_name = now.strftime("%A").lower()
         today_fmt = now.strftime("%Y%m%d")
@@ -138,7 +140,7 @@ class PostgresStaticStore:
 
         return []
 
-    def get_trip_metadata(self, trip_id: str) -> dict | None:
+    def get_trip_metadata(self, trip_id: str) -> dict[str, Any] | None:
         query = """
             SELECT
                 t.trip_id,

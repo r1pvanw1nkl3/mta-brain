@@ -108,9 +108,7 @@ class StopWriter:
     def __init__(self, state_store: StateStore):
         self.state_store = state_store
 
-    def update_arrivals_board(
-        self, stop_id, board: dict[str, int | float], current_time: int
-    ):
+    def update_arrivals_board(self, stop_id, board: dict[str, int], current_time: int):
         self.state_store.sync_set(
             Keys.arrivals(stop_id),
             board,
