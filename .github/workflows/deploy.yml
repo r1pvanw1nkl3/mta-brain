@@ -50,5 +50,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /root/mta-brain
-            # This triggers a rebuild of the image only if pyproject.toml changed
-            docker compose up -d --build
+            # We use -f to combine the base config with production overrides (Caddy, etc.)
+            docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --remove-orphans
