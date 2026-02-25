@@ -1,11 +1,12 @@
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 def _get_clock_time(time: int) -> str:
-    dt = datetime.fromtimestamp(time)
+    dt = datetime.fromtimestamp(time, tz=ZoneInfo("America/New_York"))
     return dt.strftime("%I:%M %p").lstrip("0")
 
 
