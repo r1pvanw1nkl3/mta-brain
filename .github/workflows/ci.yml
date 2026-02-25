@@ -50,6 +50,11 @@ jobs:
       - name: Run Ty (Type Check)
         run: uv run ty check
 
+      - name: Initialize Database
+        run: |
+          # We use docker exec to run psql inside the service container GitHub started
+          docker exec ${{ job.services.postgres.id }} psql -U etl_user -d mta_db_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+
       - name: Run Migrations
         run: |
           docker run --rm --network host \
