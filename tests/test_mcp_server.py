@@ -3,7 +3,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import transit_core.core.models as md
-from transit_core.mcp.server import get_station_info, get_trip_arrivals, lifespan
+from transit_core.mcp.server import (
+    get_station_info,
+    get_trip_arrivals,
+    lifespan,
+    station_search,
+)
 
 
 @pytest.fixture
@@ -41,7 +46,7 @@ def test_get_station_info_success(mock_ctx, mock_stop_reader):
     ]
 
     with patch("time.time", return_value=now):
-        result = get_station_info("101N", mock_ctx)
+        result = get_station_info.fn("101N", mock_ctx)
 
     assert len(result) == 1
     assert result[0]["route"] == "1"
@@ -66,7 +71,7 @@ def test_get_station_info_past_arrival(mock_ctx, mock_stop_reader):
     ]
 
     with patch("time.time", return_value=now):
-        result = get_station_info("101N", mock_ctx)
+        result = get_station_info.fn("101N", mock_ctx)
 
     assert result[0]["minutes_away"] == 0
 
@@ -74,7 +79,7 @@ def test_get_station_info_past_arrival(mock_ctx, mock_stop_reader):
 def test_get_station_info_no_data(mock_ctx, mock_stop_reader):
     mock_stop_reader.get_arrivals_board.return_value = []
 
-    result = get_station_info("101N", mock_ctx)
+    result = get_station_info.fn("101N", mock_ctx)
     assert result == []
 
 
@@ -82,7 +87,7 @@ def test_get_station_info_error(mock_ctx, mock_stop_reader):
     mock_stop_reader.get_arrivals_board.side_effect = Exception("DB Error")
 
     with pytest.raises(Exception) as excinfo:
-        get_station_info("101N", mock_ctx)
+        get_station_info.fn("101N", mock_ctx)
     assert "DB Error" in str(excinfo.value)
 
 
@@ -98,7 +103,7 @@ def test_get_trip_arrivals_success(mock_ctx, mock_trip_reader):
     ]
 
     with patch("time.time", return_value=now):
-        result = get_trip_arrivals("T1", mock_ctx)
+        result = get_trip_arrivals.fn("T1", mock_ctx)
 
     assert len(result) == 1
     assert result[0]["stop_id"] == "101N"
@@ -109,7 +114,7 @@ def test_get_trip_arrivals_success(mock_ctx, mock_trip_reader):
 def test_get_trip_arrivals_no_data(mock_ctx, mock_trip_reader):
     mock_trip_reader.get_trip_arrivals.return_value = []
 
-    result = get_trip_arrivals("T1", mock_ctx)
+    result = get_trip_arrivals.fn("T1", mock_ctx)
     assert result == []
 
 
@@ -123,7 +128,7 @@ def test_get_trip_arrivals_no_time(mock_ctx, mock_trip_reader):
         }
     ]
 
-    result = get_trip_arrivals("T1", mock_ctx)
+    result = get_trip_arrivals.fn("T1", mock_ctx)
     assert result[0]["minutes_away"] is None
     assert result[0]["time_display"] == "N/A"
 
@@ -132,8 +137,27 @@ def test_get_trip_arrivals_error(mock_ctx, mock_trip_reader):
     mock_trip_reader.get_trip_arrivals.side_effect = Exception("Redis Error")
 
     with pytest.raises(Exception) as excinfo:
-        get_trip_arrivals("T1", mock_ctx)
+        get_trip_arrivals.fn("T1", mock_ctx)
     assert "Redis Error" in str(excinfo.value)
+
+
+def test_station_search_success(mock_ctx, mock_stop_reader):
+    mock_stop_reader.fuzzy_station_search.return_value = [
+        {"stop_id": "101", "stop_name": "242 St", "routes": "1", "rank": 1.0}
+    ]
+
+    result = station_search.fn("242 St", mock_ctx)
+
+    assert len(result) == 1
+    assert result[0]["stop_id"] == "101"
+    assert result[0]["stop_name"] == "242 St"
+
+
+def test_station_search_error(mock_ctx, mock_stop_reader):
+    mock_stop_reader.fuzzy_station_search.side_effect = Exception("Search Error")
+
+    result = station_search.fn("242 St", mock_ctx)
+    assert result is None
 
 
 @pytest.mark.anyio

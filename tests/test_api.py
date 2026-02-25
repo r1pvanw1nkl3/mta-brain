@@ -93,3 +93,15 @@ def test_get_trip_status_none():
     response = client.get("/trips/T1/status")
     assert response.status_code == 200
     assert response.json() is None
+
+
+def test_stop_search():
+    mock_stop_reader.fuzzy_station_search.return_value = [
+        {"stop_id": "101", "stop_name": "242 St", "routes": "1", "rank": 1.0}
+    ]
+
+    response = client.get("/stops/search/242")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["stop_id"] == "101"
