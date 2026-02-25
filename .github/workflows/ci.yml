@@ -52,8 +52,10 @@ jobs:
 
       - name: Initialize Database
         run: |
-          # We use docker exec to run psql inside the service container GitHub started
-          docker exec ${{ job.services.postgres.id }} psql -U etl_user -d mta_db_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+          # Create the app_user role so migrations can grant permissions to it
+          docker exec ${{ job.services.postgres.id }} psql -U etl_user -d mta_db_test \
+            -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" \
+            -c "CREATE USER app_user WITH PASSWORD 'password';"
 
       - name: Run Migrations
         run: |
@@ -63,6 +65,7 @@ jobs:
             -url=jdbc:postgresql://localhost:5432/mta_db_test \
             -user=etl_user \
             -password=password \
+            -placeholders.app_user=app_user \
             -locations=filesystem:/flyway/sql \
             migrate
 
@@ -75,6 +78,6 @@ jobs:
           DB_NAME: mta_db_test
           ETL_DB_USER: etl_user
           ETL_DB_PASSWORD: password
-          APP_DB_USER: etl_user
+          APP_DB_USER: app_user
           APP_DB_PASSWORD: password
         run: uv run pytest
