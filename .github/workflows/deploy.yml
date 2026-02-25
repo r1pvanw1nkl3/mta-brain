@@ -1,0 +1,54 @@
+name: CD Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI Checks"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    # ONLY run if the CI workflow actually succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync files to Hetzner
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ".,!.git/,!.github/,!.venv/,!**/__pycache__/,!logs/,!tests/"
+          target: "/root/mta-brain"
+          rm: false
+
+      - name: Create .env file
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /root/mta-brain
+            cat <<EOF > .env
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            APP_DB_USER=app_user
+            APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}
+            ETL_DB_USER=etl_user
+            ETL_DB_PASSWORD=${{ secrets.ETL_DB_PASSWORD }}
+            DB_NAME=mta_brain
+            REDIS_HOST=redis
+            EOF
+
+      - name: Restart Containers
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /root/mta-brain
+            # This triggers a rebuild of the image only if pyproject.toml changed
+            docker compose up -d --build
