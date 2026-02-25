@@ -1,0 +1,21 @@
+# Global Options
+{
+    email hello@christopher-stone.com
+}
+
+# Your Domain Site Block
+api.transitbrain.nyc {
+    # Reverse proxy to the 'api' service in your Docker network on port 8000
+    reverse_proxy api:8000 {
+        # Explicitly pass headers so FastAPI can correctly handle redirects and docs
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+
+    # Structured Request Logging
+    log {
+        # Output to standard output so it shows up in 'docker compose logs'
+        output stdout
+        format json
+    }
+}

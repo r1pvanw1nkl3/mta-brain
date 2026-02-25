@@ -1,6 +1,7 @@
 import logging
 import sys
 import time
+from typing import LiteralString
 
 from services.static_etl.gtfs_download import get_regular_feed, get_supplemented_feed
 from services.static_etl.gtfs_parser import process_gtfs_zip
@@ -46,10 +47,16 @@ def run_reload(all=False):
                 process_gtfs_zip(pool, regular_file, schema="public")
             logger.info("Loading supplemented data")
             process_gtfs_zip(pool, supplemented_file, schema="supplemented")
+            logger.info("refreshing view...")
+
+            query: LiteralString = "REFRESH MATERIALIZED VIEW  mv_station_services"
+            with pool.connection() as conn:
+                conn.execute(query)
         logger.info(
-            "Full reload successful",
+            "Full reload successful, view refreshed",
             extra={"elapsed_seconds": round(time.time() - start_process, 2)},
         )
+
     except Exception:
         logger.exception("Reload failed")
 

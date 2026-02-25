@@ -1,7 +1,7 @@
 services:
   caddy:
     image: caddy:2-alpine
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -13,11 +13,10 @@ services:
       - mta-brain-net
 
   api:
-    restart: always
-    # No volumes used in prod; we use the baked-in code from the image
+    restart: unless-stopped
 
   hydrator:
-    restart: always
+    restart: unless-stopped
 
 volumes:
   caddy_data:
