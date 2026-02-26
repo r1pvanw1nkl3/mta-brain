@@ -65,5 +65,8 @@ if __name__ == "__main__":
     all = False
     if len(sys.argv) > 1:
         if sys.argv[1].upper() == "ALL":
+            logger.info("Performing full refresh.")
             all = True
+        else:
+            logger.info("Performing supplemented refresh.")
     run_reload(all)
