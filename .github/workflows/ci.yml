@@ -76,6 +76,7 @@ jobs:
             -password=password \
             -placeholders.app_user=app_user \
             -placeholders.app_password=app_password \
+            -placeholders.db_name=mta_db_test \
             -locations=filesystem:/flyway/sql \
             migrate
 

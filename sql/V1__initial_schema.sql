@@ -134,4 +134,4 @@ ON stops
 USING gin (REPLACE(stop_name, '-', ' ') gin_trgm_ops);
 
 -- 7. Permissions & Grants
-GRANT CONNECT ON DATABASE mta_brain TO ${app_user};
+GRANT CONNECT ON DATABASE ${db_name} TO ${app_user};

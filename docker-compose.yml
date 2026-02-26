@@ -73,6 +73,7 @@ services:
       - FLYWAY_URL=jdbc:postgresql://postgres:5432/${DB_NAME}
       - FLYWAY_USER=postgres
       - FLYWAY_PASSWORD=${DB_PASSWORD}
+      - FLYWAY_PLACEHOLDERS_DB_NAME=${DB_NAME}
       - FLYWAY_PLACEHOLDERS_APP_USER=${APP_DB_USER}
       - FLYWAY_PLACEHOLDERS_APP_PASSWORD=${APP_DB_PASSWORD}
       - FLYWAY_LOCATIONS=filesystem:/flyway/sql
