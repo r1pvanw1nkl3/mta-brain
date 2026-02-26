@@ -75,6 +75,7 @@ jobs:
             -user=etl_user \
             -password=password \
             -placeholders.app_user=app_user \
+            -placeholders.app_password=app_password \
             -locations=filesystem:/flyway/sql \
             migrate
 
