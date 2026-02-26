@@ -1,6 +1,6 @@
-# MTA Brain
+# Transit Brain NYC
 
-MTA Brain is a high-performance transit data engine built to ingest, process, and serve New York City Transit (MTA) data. It synchronizes static GTFS schedules with real-time arrivals to provide a unified view of the subway system's current state.
+Transit Brain NYC is a high-performance transit data engine built to ingest, process, and serve New York City Transit (MTA) data. It synchronizes static GTFS schedules with real-time arrivals to provide a unified view of the subway system's current state.
 
 ## Quick Start
 
