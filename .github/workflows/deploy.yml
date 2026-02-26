@@ -22,7 +22,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ".,!.git/,!.github/,!.venv/,!**/__pycache__/,!logs/,!tests/"
           target: "/root/mta-brain"
-          rm: false
+          rm: true
 
       - name: Create .env file
         uses: appleboy/ssh-action@master
