@@ -55,16 +55,22 @@ jobs:
             echo "Step 1: Building latest images..."
             docker compose build api hydrator
 
-            echo "Step 2: Starting Database and Redis..."
-            docker compose up -d postgres redis caddy
+            echo "Step 2: Starting Database, Redis, and Caddy..."
+            # Include prod file so caddy is recognized
+            docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d postgres redis caddy
 
-            echo "Step 3: Syncing passwords and clearing locks..."
-            # Wait for postgres to be ready
+            echo "Step 3: Syncing passwords and ensuring roles exist..."
             until docker exec mta-brain-postgres-1 pg_isready -U postgres; do sleep 2; done
 
-            # Update the etl_user password in the DB to match the secret, just in case the volume is old
+            # Ensure app_user exists (it won't if volume was already created)
             docker exec mta-brain-postgres-1 psql -U postgres -d mta_brain -c \
-              "ALTER USER etl_user WITH PASSWORD '${{ secrets.ETL_DB_PASSWORD }}';" || true
+              "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_user') THEN CREATE ROLE app_user WITH LOGIN PASSWORD '${{ secrets.APP_DB_PASSWORD }}'; END IF; END \$\$;"
+
+            # Update the etl_user and app_user passwords to match the secrets
+            docker exec mta-brain-postgres-1 psql -U postgres -d mta_brain -c \
+              "ALTER USER etl_user WITH PASSWORD '${{ secrets.ETL_DB_PASSWORD }}';"
+            docker exec mta-brain-postgres-1 psql -U postgres -d mta_brain -c \
+              "ALTER USER app_user WITH PASSWORD '${{ secrets.APP_DB_PASSWORD }}';"
 
             # Clear stale locks
             docker exec mta-brain-postgres-1 psql -U postgres -d mta_brain -c \
