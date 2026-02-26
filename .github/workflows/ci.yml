@@ -7,7 +7,7 @@ on:
       - 'src/**'
       - 'pyproject.toml'
       - 'uv.lock'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
     paths:
