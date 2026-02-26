@@ -42,21 +42,33 @@ jobs:
             REDIS_HOST=redis
             EOF
 
-      - name: Restart Containers
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 15m
-          script: |
-            cd /root/mta-brain
-            # Start everything. Docker will wait for Flyway due to depends_on
-            docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --remove-orphans
+            - name: Restart Containers
+              uses: appleboy/ssh-action@master
+              with:
+                host: ${{ secrets.SERVER_IP }}
+                username: ${{ secrets.SERVER_USER }}
+                key: ${{ secrets.SSH_PRIVATE_KEY }}
+                command_timeout: 30m
+                script: |
+                  cd /root/mta-brain
 
-            # Diagnostic: check if flyway is still running or failed
-            echo "Checking migration status..."
-            docker compose ps flyway
+                  echo "Step 1: Building latest images..."
+                  docker compose build api hydrator
 
-            # If it's still running, show the last few logs to see progress
-            docker compose logs --tail=20 flyway
+                  echo "Step 2: Starting Database and Redis..."
+                  docker compose up -d postgres redis caddy
+
+                  echo "Step 3: Clearing stale database locks..."
+                  # This ensures no old connections are blocking the migration
+                  docker exec mta-brain-postgres-1 psql -U etl_user -d mta_brain -c \
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'mta_brain' AND pid <> pg_backend_pid();" || true
+
+                  echo "Step 4: Running Migrations..."
+                  # Run flyway separately so we can see its logs and progress
+                  docker compose run --rm flyway
+
+                  echo "Step 5: Starting Application Services..."
+                  docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d --remove-orphans api hydrator
+
+                  echo "Deployment Complete!"
+                  docker compose ps
