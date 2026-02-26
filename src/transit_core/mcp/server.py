@@ -205,6 +205,10 @@ def station_search(search_string: str, ctx: Context) -> list[dict] | None:
         logger.exception(f"Error in station_search: {e}")
 
 
+def main():
+    mcp.run()
+
+
 # At the bottom of server.py
 if __name__ == "__main__":
-    mcp.run()
+    main()
