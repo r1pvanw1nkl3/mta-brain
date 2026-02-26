@@ -48,7 +48,15 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 15m
           script: |
             cd /root/mta-brain
-            # We use -f to combine the base config with production overrides (Caddy, etc.)
+            # Start everything. Docker will wait for Flyway due to depends_on
             docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --remove-orphans
+
+            # Diagnostic: check if flyway is still running or failed
+            echo "Checking migration status..."
+            docker compose ps flyway
+
+            # If it's still running, show the last few logs to see progress
+            docker compose logs --tail=20 flyway
