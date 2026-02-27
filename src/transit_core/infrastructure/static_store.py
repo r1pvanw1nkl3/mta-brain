@@ -119,6 +119,7 @@ class PostgresStaticStore:
 
         try:
             with self.pool.connection() as conn:
+                conn.execute("set search_path = supplemented;")
                 results = conn.execute(
                     query,
                     (
@@ -154,7 +155,7 @@ class PostgresStaticStore:
         """
         try:
             with self.pool.connection() as conn:
-                # Use row_factory to get a dict if not already configured in pool
+                conn.execute("set search_path = supplemented, public;")
                 cur = conn.execute(query, (trip_id,))
                 row: Optional[dict[str, Any]] = cur.fetchone()
                 return row if row else None
@@ -173,6 +174,7 @@ class PostgresStaticStore:
         query = "SELECT stop_name FROM stops WHERE stop_id = %s LIMIT 1;"
         try:
             with self.pool.connection() as conn:
+                conn.execute("set search_path = supplemented, public;")
                 row = conn.execute(query, (base_stop_id,)).fetchone()
                 return row["stop_name"] if row else "Unknown"
         except Exception:
@@ -180,6 +182,7 @@ class PostgresStaticStore:
 
     def get_trip_stop_times(self, trip_id: str) -> dict[str, int]:
         query = """
+            set search_path = supplemented, public;
             SELECT stop_id, arrival_time
             FROM stop_times
             WHERE trip_id = %s
@@ -187,10 +190,12 @@ class PostgresStaticStore:
         """
         try:
             with self.pool.connection() as conn:
+                conn.execute("set search_path = supplemented, public;")
                 results = conn.execute(query, (trip_id,)).fetchall()
                 if not results:
                     # Suffix match fallback
                     query_suffix = """
+                        set search_path = supplemented, public;
                         SELECT stop_id, arrival_time
                         FROM stop_times
                         WHERE trip_id LIKE %s
@@ -211,6 +216,7 @@ class PostgresStaticStore:
     def get_stop_names(self, stop_ids: list[str]) -> dict[str, str]:
         query = "select stop_id, stop_name FROM stops WHERE stop_id = ANY(%s)"
         with self.pool.connection() as conn:
+            conn.execute("set search_path = supplemented, public;")
             rows = conn.execute(query, (stop_ids,))
         return {row["stop_id"]: row["stop_name"] for row in rows}
 
