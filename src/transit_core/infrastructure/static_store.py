@@ -88,15 +88,15 @@ class PostgresStaticStore:
 
         query = sql.SQL("""
             WITH active_service AS (
-                SELECT service_id FROM calendar
+                SELECT service_id FROM supplemented.calendar
                 WHERE {column_name} = 1
                   AND %s BETWEEN start_date AND end_date
                   AND service_id NOT IN (
-                      SELECT service_id FROM calendar_dates
+                      SELECT service_id FROM supplemented.calendar_dates
                       WHERE date = %s AND exception_type = 2
                   )
                 UNION
-                SELECT service_id FROM calendar_dates
+                SELECT service_id FROM supplemented.calendar_dates
                 WHERE date = %s AND exception_type = 1
             )
             SELECT
@@ -106,10 +106,10 @@ class PostgresStaticStore:
                 t.trip_headsign,
                 st.stop_id as platform_id,
                 RIGHT(st.stop_id, 1) as direction
-            FROM stop_times st
-            JOIN trips t ON st.trip_id = t.trip_id
+            FROM supplemented.stop_times st
+            JOIN supplemented.trips t ON st.trip_id = t.trip_id
             JOIN active_service asvc ON t.service_id = asvc.service_id
-            JOIN stops s ON st.stop_id = s.stop_id
+            JOIN supplemented.stops s ON st.stop_id = s.stop_id
             WHERE (s.parent_station = %s OR s.stop_id = %s)
               AND st.arrival_time BETWEEN %s::interval AND %s::interval
             ORDER BY st.arrival_time ASC;
@@ -119,7 +119,6 @@ class PostgresStaticStore:
 
         try:
             with self.pool.connection() as conn:
-                conn.execute("set search_path = supplemented;")
                 results = conn.execute(
                     query,
                     (
@@ -174,7 +173,6 @@ class PostgresStaticStore:
         query = "SELECT stop_name FROM stops WHERE stop_id = %s LIMIT 1;"
         try:
             with self.pool.connection() as conn:
-                conn.execute("set search_path = supplemented, public;")
                 row = conn.execute(query, (base_stop_id,)).fetchone()
                 return row["stop_name"] if row else "Unknown"
         except Exception:
@@ -182,7 +180,6 @@ class PostgresStaticStore:
 
     def get_trip_stop_times(self, trip_id: str) -> dict[str, int]:
         query = """
-            set search_path = supplemented, public;
             SELECT stop_id, arrival_time
             FROM stop_times
             WHERE trip_id = %s
@@ -190,12 +187,10 @@ class PostgresStaticStore:
         """
         try:
             with self.pool.connection() as conn:
-                conn.execute("set search_path = supplemented, public;")
                 results = conn.execute(query, (trip_id,)).fetchall()
                 if not results:
                     # Suffix match fallback
                     query_suffix = """
-                        set search_path = supplemented, public;
                         SELECT stop_id, arrival_time
                         FROM stop_times
                         WHERE trip_id LIKE %s

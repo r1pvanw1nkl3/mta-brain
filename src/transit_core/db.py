@@ -10,6 +10,11 @@ from transit_core.core.exceptions import DatabaseError
 logger = logging.getLogger(__name__)
 
 
+def configure_connection(conn: Connection[DictRow]):
+    conn.execute("SET search_path = supplemented, public")
+    conn.commit()
+
+
 def create_db_pool(connection_url: str) -> ConnectionPool[Connection[DictRow]]:
     """
     Creates the connection pool
@@ -20,9 +25,12 @@ def create_db_pool(connection_url: str) -> ConnectionPool[Connection[DictRow]]:
         conninfo=connection_url,
         min_size=2,
         max_size=10,
+        configure=configure_connection,
         kwargs={"row_factory": dict_row, "connect_timeout": 5},
         open=True,
     )
+    with pool.connection() as conn:
+        conn.execute("set search_path = supplemented, public")
     return pool
 
 
