@@ -8,12 +8,14 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/**'
+      - 'tests/**'
   pull_request:
     branches: [ main ]
     paths:
       - 'src/**'
       - 'pyproject.toml'
       - 'uv.lock'
+      - 'tests/**'
 
 jobs:
   lint-and-test:
