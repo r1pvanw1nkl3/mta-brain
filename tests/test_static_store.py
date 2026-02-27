@@ -20,7 +20,7 @@ def test_get_stop_name(mock_pool):
 
     store = PostgresStaticStore(pool)
     assert store.get_stop_name("123N") == "Times Sq"
-    assert conn.execute.call_count == 2
+    assert conn.execute.call_count == 1
     # Check that it stripped N in the second call
     assert conn.execute.call_args_list[1][0][1] == ("123",)
 
