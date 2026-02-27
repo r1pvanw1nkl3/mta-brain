@@ -10,7 +10,7 @@ class Arrival(BaseModel):
     trip_id: str
     arrival_time: int
     route_id: str
-    headsign: str
+    headsign: Optional[str] = None
     direction: str
     is_realtime: bool
     status: str

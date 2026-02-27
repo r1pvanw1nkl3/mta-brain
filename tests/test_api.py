@@ -40,7 +40,7 @@ def test_get_arrivals_stop():
         )
     ]
 
-    response = client.get("/stops/S1/arrivals")
+    response = client.get("/v1/stops/S1/arrivals")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -59,7 +59,7 @@ def test_get_trip_arrivals():
         }
     ]
 
-    response = client.get("/trips/T1/arrivals")
+    response = client.get("/v1/trips/T1/arrivals")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -71,7 +71,7 @@ def test_get_trip_arrivals():
 def test_get_trip_arrivals_not_found():
     mock_trip_reader.get_trip_arrivals.return_value = []
 
-    response = client.get("/trips/T1/arrivals")
+    response = client.get("/v1/trips/T1/arrivals")
     assert response.status_code == 404
     assert response.json()["detail"] == "Trip T1 not found"
 
@@ -81,7 +81,7 @@ def test_get_trip_status():
         trip=md.Trip(trip_id="T1", route_id="1", start_date=20260211)
     )
 
-    response = client.get("/trips/T1/status")
+    response = client.get("/v1/trips/T1/status")
     assert response.status_code == 200
     data = response.json()
     assert data["trip"]["trip_id"] == "T1"
@@ -90,7 +90,7 @@ def test_get_trip_status():
 def test_get_trip_status_none():
     mock_trip_reader.get_trip_status.return_value = None
 
-    response = client.get("/trips/T1/status")
+    response = client.get("/v1/trips/T1/status")
     assert response.status_code == 200
     assert response.json() is None
 
@@ -100,7 +100,7 @@ def test_stop_search():
         {"stop_id": "101", "stop_name": "242 St", "routes": "1", "rank": 1.0}
     ]
 
-    response = client.get("/stops/search/242")
+    response = client.get("/v1/stops/search?search_string=242")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
