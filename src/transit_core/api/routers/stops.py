@@ -14,7 +14,18 @@ async def get_arrivals(stop_id: str, reader: StopReader = Depends(get_stop_reade
     return arrivals
 
 
-@router.get("/stops/search/{search_string}")
+@router.get(
+    "/stops/{stop_id}/arrivals/live", response_model=list[schemas.ArrivalResponse]
+)
+async def get_live_arrivals(
+    stop_id: str, reader: StopReader = Depends(get_stop_reader)
+):
+    arrivals = reader.get_live_arrivals(stop_id)
+
+    return arrivals
+
+
+@router.get("/stops/search/")
 async def stop_search(
     search_string: str, reader: StopReader = Depends(get_stop_reader)
 ):
