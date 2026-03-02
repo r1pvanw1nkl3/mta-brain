@@ -125,6 +125,38 @@ class StopReader:
     def get_stop_name(self, stop_id: str):
         return self.static_store.get_stop_name(stop_id)
 
+    def get_live_arrivals(
+        self, stop_id: str, lookahead_min: int = 60
+    ) -> list[md.Arrival]:
+        now_ts = int(time.time())
+        if stop_id.endswith(("N", "S")):
+            platforms = [stop_id]
+        else:
+            platforms = [stop_id + "N", stop_id + "S"]
+
+        live_entries = []
+        for p_id in platforms:
+            zset_data = self.state_store.get_zset(
+                Keys.arrivals(p_id), int(time.time() + (lookahead_min * 60))
+            )
+            for tid, ts in zset_data.items():
+                raw_md = self.state_store.get_kv(Keys.trip(tid))
+                if raw_md and ts >= (now_ts - config.recently_passed_filter_seconds):
+                    trip_details = md.TripUpdate.model_validate_json(raw_md)
+
+                    print(trip_details)
+                    live_entries.append(
+                        md.Arrival(
+                            trip_id=tid,
+                            route_id=trip_details.trip.route_id,
+                            direction=p_id[-1],
+                            arrival_time=int(ts),
+                            is_realtime=True,
+                            status="LIVE",
+                        )
+                    )
+        return live_entries
+
     def get_arrivals_board(
         self, stop_id: str, lookahead_min: int = 60, get_schedules: bool = True
     ) -> list[md.Arrival]:
