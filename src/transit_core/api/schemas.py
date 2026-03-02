@@ -17,6 +17,7 @@ class ArrivalResponse(BaseModel):
     direction: str
     arrival_time: int
     status: str
+    headsign: str
 
     @computed_field
     def minutes_away(self) -> int:

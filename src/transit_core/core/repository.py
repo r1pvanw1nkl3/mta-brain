@@ -158,8 +158,12 @@ class StopReader:
         return live_entries
 
     def get_arrivals_board(
-        self, stop_id: str, lookahead_min: int = 60
+        self, stop_id: str, lookahead_min: int = 60, get_schedules: bool = True
     ) -> list[md.Arrival]:
+        stop_id = stop_id.upper()
+        now_ts = int(time.time())
+
+        # 1. Normalize Stop ID and Platforms
         if stop_id.endswith(("N", "S")):
             base_stop_id = stop_id[:-1]
             platforms = [stop_id]
@@ -167,58 +171,73 @@ class StopReader:
             base_stop_id = stop_id
             platforms = [stop_id + "N", stop_id + "S"]
 
+        # 2. Gather Live Entries from Redis
         live_entries = []
         for p_id in platforms:
             direction = p_id[-1]
             zset_data = self.state_store.get_zset(
-                Keys.arrivals(p_id), int(time.time() + (lookahead_min * 60))
+                Keys.arrivals(p_id), now_ts + (lookahead_min * 60)
             )
             for tid, ts in zset_data.items():
                 live_entries.append((tid, ts, direction))
 
-        scheduled_data = self.static_store.get_scheduled_arrivals(
-            base_stop_id, lookahead_min
-        )
-
-        # 2. Group Schedule by Route and Direction for fast fuzzy lookup
+        # 3. Prepare Schedule Lookups
+        scheduled_by_id = {}
         scheduled_groups = {}
-        for s in scheduled_data:
-            key = (s["route_id"], s["direction"])
-            if key not in scheduled_groups:
-                scheduled_groups[key] = []
-            scheduled_groups[key].append(s)
+        scheduled_data = []
+
+        if get_schedules:
+            scheduled_data = self.static_store.get_scheduled_arrivals(
+                base_stop_id, lookahead_min
+            )
+            for s in scheduled_data:
+                # Index by ID for exact matching
+                scheduled_by_id[s["trip_id"]] = s
+                # Group by Route/Direction for fuzzy matching
+                key = (s["route_id"], s["direction"])
+                scheduled_groups.setdefault(key, []).append(s)
 
         unified_board = []
         matched_static_ids = set()
 
-        # 3. Process Live Data
+        # 4. Process Live Data
         for trip_id, arrival_ts, dir_letter in live_entries:
             best_match = None
 
-            # 1. Try EXACT ID match globally first (resilient to missing Redis metadata)
-            # We try exact match first, then suffix match for prefixed static IDs
-            for s in scheduled_data:
-                if s["trip_id"] not in matched_static_ids:
-                    if s["trip_id"] == trip_id or s["trip_id"].endswith("_" + trip_id):
-                        best_match = s
-                        break
+            # --- A. Exact Match ---
+            if get_schedules:
+                # Try exact ID
+                best_match = scheduled_by_id.get(trip_id)
+                # Try suffix match if exact fails (e.g., "STATIC_ID_123" vs "123")
+                if not best_match:
+                    for s_id, s_val in scheduled_by_id.items():
+                        if s_id.endswith("_" + trip_id):
+                            best_match = s_val
+                            break
 
-            # 2. If no exact match, try to get route_id to enable fuzzy matching
+                if best_match and best_match["trip_id"] in matched_static_ids:
+                    best_match = None
+
+            # --- B. Metadata & Route Inference ---
             route_id = "???"
+            live_headsign = None
             raw_metadata = self.state_store.get_kv(Keys.trip(trip_id))
+
             if raw_metadata:
                 live_update = md.TripUpdate.model_validate_json(raw_metadata)
                 route_id = live_update.trip.route_id
+                if live_update.stop_time_update:
+                    dest_stop_id = live_update.stop_time_update[-1].stop_id
+                    live_headsign = self.static_store.get_stop_name(dest_stop_id)
 
-            # 3. If metadata is missing, try to infer route from trip_id
-            # (e.g., 081300_B..S66R -> B)
+            # Infer route from Trip ID if still missing (e.g., 081300_B..S)
             if route_id == "???" and "_" in trip_id:
                 parts = trip_id.split("_")
                 if len(parts) > 1 and "." in parts[1]:
                     route_id = parts[1].split(".")[0]
 
-            # 4. Try FUZZY match: Look for the closest scheduled train in the rt group
-            if not best_match and route_id != "???":
+            # --- C. Fuzzy Match (If Exact Match failed) ---
+            if get_schedules and not best_match and route_id != "???":
                 group_key = (route_id, dir_letter)
                 candidates = scheduled_groups.get(group_key, [])
                 min_diff = config.fuzzy_match_window_seconds
@@ -230,13 +249,16 @@ class StopReader:
                         min_diff = diff
                         best_match = cand
 
+            # --- D. Finalize Record ---
             if best_match:
                 matched_static_ids.add(best_match["trip_id"])
                 unified_board.append(
                     md.Arrival(
                         trip_id=trip_id,
-                        route_id=best_match["route_id"],
-                        headsign=best_match["trip_headsign"],
+                        route_id=route_id
+                        if route_id != "???"
+                        else best_match["route_id"],
+                        headsign=live_headsign or best_match["trip_headsign"],
                         direction=dir_letter,
                         arrival_time=int(arrival_ts),
                         is_realtime=True,
@@ -244,28 +266,25 @@ class StopReader:
                     )
                 )
             else:
-                # Improve destination for LIVE-ADDED trains
-                headsign = "In Transit"
-                raw_metadata = self.state_store.get_kv(Keys.trip(trip_id))
-                if raw_metadata:
-                    live_update = md.TripUpdate.model_validate_json(raw_metadata)
-                    if live_update.stop_time_update:
-                        dest_stop_id = live_update.stop_time_update[-1].stop_id
-                        headsign = self.static_store.get_stop_name(dest_stop_id)
-
-                # If still "???", try a deep look in static DB for route/headsign
+                # Fallback for LIVE-ADDED trains (In Transit/Deep Static Search)
+                headsign = live_headsign or "In Transit"
                 if route_id == "???" or headsign == "In Transit":
-                    static_meta = self.static_store.get_trip_metadata(trip_id)
-                    if not static_meta:
-                        # Try searching with suffix if we have a guess at the format
-                        static_meta = self.static_store.get_trip_metadata("%" + trip_id)
-
+                    static_meta = self.static_store.get_trip_metadata(
+                        trip_id
+                    ) or self.static_store.get_trip_metadata("%" + trip_id)
                     if static_meta:
-                        if route_id == "???":
-                            route_id = static_meta["route_id"]
-                        if headsign == "In Transit":
-                            headsign = static_meta["trip_headsign"]
-
+                        route_id = (
+                            route_id if route_id != "???" else static_meta["route_id"]
+                        )
+                        headsign = (
+                            headsign
+                            if headsign != "In Transit"
+                            else static_meta["trip_headsign"]
+                        )
+                if get_schedules:
+                    status = "LIVE-ADDED"
+                else:
+                    status = "LIVE"
                 unified_board.append(
                     md.Arrival(
                         trip_id=trip_id,
@@ -274,35 +293,36 @@ class StopReader:
                         direction=dir_letter,
                         arrival_time=int(arrival_ts),
                         is_realtime=True,
-                        status="LIVE-ADDED",
+                        status=status,
                     )
                 )
 
-        # 4. Add remaining Scheduled trips (The true "Ghosts")
-        now_ts = int(time.time())
-        for s in scheduled_data:
-            if s["trip_id"] not in matched_static_ids:
-                # If a specific platform was requested, only show that direction
-                if stop_id.endswith(("N", "S")) and s["direction"] != stop_id[-1]:
-                    continue
+        # 5. Add "Ghost" Trains (Scheduled but not in Live Feed)
+        if get_schedules:
+            for s in scheduled_data:
+                if s["trip_id"] not in matched_static_ids:
+                    # Direction filter for specific platform requests
+                    if stop_id.endswith(("N", "S")) and s["direction"] != stop_id[-1]:
+                        continue
+                    # Time window filter
+                    if s["arrival_timestamp"] < (
+                        now_ts - config.arrivals_window_past_seconds
+                    ):
+                        continue
 
-                # Drop trains that should have passed > window ago
-                if s["arrival_timestamp"] < (
-                    now_ts - config.arrivals_window_past_seconds
-                ):
-                    continue
-
-                unified_board.append(
-                    md.Arrival(
-                        trip_id=s["trip_id"],
-                        route_id=s["route_id"],
-                        headsign=s["trip_headsign"],
-                        direction=s["direction"],
-                        arrival_time=s["arrival_timestamp"],
-                        is_realtime=False,
-                        status="SCHEDULED",
+                    unified_board.append(
+                        md.Arrival(
+                            trip_id=s["trip_id"],
+                            route_id=s["route_id"],
+                            headsign=s["trip_headsign"],
+                            direction=s["direction"],
+                            arrival_time=s["arrival_timestamp"],
+                            is_realtime=False,
+                            status="SCHEDULED",
+                        )
                     )
-                )
+
+        # 6. Final Filter and Sort
         final_board = [
             train
             for train in unified_board

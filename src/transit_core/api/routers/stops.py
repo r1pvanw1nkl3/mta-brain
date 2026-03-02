@@ -8,19 +8,13 @@ router = APIRouter()
 
 
 @router.get("/stops/{stop_id}/arrivals", response_model=list[schemas.ArrivalResponse])
-async def get_arrivals(stop_id: str, reader: StopReader = Depends(get_stop_reader)):
-    arrivals = reader.get_arrivals_board(stop_id)
-
-    return arrivals
-
-
-@router.get(
-    "/stops/{stop_id}/arrivals/live", response_model=list[schemas.ArrivalResponse]
-)
-async def get_live_arrivals(
-    stop_id: str, reader: StopReader = Depends(get_stop_reader)
+async def get_arrivals(
+    stop_id: str, live: bool = False, reader: StopReader = Depends(get_stop_reader)
 ):
-    arrivals = reader.get_live_arrivals(stop_id)
+    if live:
+        arrivals = reader.get_arrivals_board(stop_id, get_schedules=False)
+    else:
+        arrivals = reader.get_arrivals_board(stop_id)
 
     return arrivals
 
