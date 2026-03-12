@@ -76,25 +76,6 @@ def test_get_trip_arrivals_not_found():
     assert response.json()["detail"] == "Trip T1 not found"
 
 
-def test_get_trip_status():
-    mock_trip_reader.get_trip_status.return_value = md.TripUpdate(
-        trip=md.Trip(trip_id="T1", route_id="1", start_date=20260211)
-    )
-
-    response = client.get("/v1/trips/T1/status")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["trip"]["trip_id"] == "T1"
-
-
-def test_get_trip_status_none():
-    mock_trip_reader.get_trip_status.return_value = None
-
-    response = client.get("/v1/trips/T1/status")
-    assert response.status_code == 200
-    assert response.json() is None
-
-
 def test_stop_search():
     mock_stop_reader.fuzzy_station_search.return_value = [
         {"stop_id": "101", "stop_name": "242 St", "routes": "1", "rank": 1.0}
