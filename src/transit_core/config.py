@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     log_file_path: str = "logs/app.log"
     etl_log_file_path: str = "logs/etl.log"
     gtfs_static_path: str = "gtfs_static"
+    subway_entrances_url: str = (
+        "https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD"
+    )
 
     @computed_field
     def etl_database_url(self) -> str:
