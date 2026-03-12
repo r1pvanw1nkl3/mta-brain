@@ -122,8 +122,12 @@ class StopReader:
         self.state_store = state_store
         self.static_store = static_store
 
-    def get_stop_name(self, stop_id: str):
+    def get_stop_name(self, stop_id: str) -> str:
         return self.static_store.get_stop_name(stop_id)
+
+    def get_nearby_stops(self, lat: float, lon: float, count: int) -> list[dict]:
+        result = self.static_store.get_nearby_stations(lat, lon, count)
+        return result
 
     def get_live_arrivals(
         self, stop_id: str, lookahead_min: int = 60

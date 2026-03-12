@@ -13,13 +13,55 @@ class PostgresStaticStore:
     def __init__(self, pool: ConnectionPool[Connection[DictRow]]):
         self.pool = pool
 
+    def get_nearby_stations(self, lat, long, count) -> list[dict]:
+        query = """
+            select * from(
+            SELECT DISTINCT ON (gtfs_stop_id)
+                stop_name,
+                gtfs_stop_id,
+                line,
+                entrance_latitude,
+                entrance_longitude,
+                ST_Distance(
+                    entrance_location,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326),
+                    true
+                ) as dist_meters
+            FROM subway_entrances
+            ORDER BY
+                gtfs_stop_id, -- Required by DISTINCT ON to be the first sort key
+                entrance_location <-> ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            order by dist_meters
+            limit %s
+        """
+
+        try:
+            with self.pool.connection() as conn:
+                results = conn.execute(
+                    query,
+                    (lat, long, lat, long, count),
+                ).fetchall()
+                return results
+        except Exception as e:
+            logger.exception(
+                "Failed when performing nearby station search:",
+                extra={
+                    "lat": lat,
+                    "long": long,
+                    "count": count,
+                    "error": str(e),
+                },
+            )
+
+        return []
+
     def fuzzy_station_search(
         self,
         search_query: str,
         ilike_query: str,
         has_single_char: bool,
         regex_pattern: str | None = None,
-    ):
+    ) -> list[dict]:
         query = """
                 SELECT
                     s.stop_id,

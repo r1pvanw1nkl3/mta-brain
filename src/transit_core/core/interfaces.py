@@ -2,6 +2,13 @@ from typing import Any, ContextManager, Protocol, runtime_checkable
 
 
 @runtime_checkable
+class StreetRoutingService(Protocol):
+    def get_walking_directions(user_lat: float, user_lon: float, stations: list): ...
+
+    # TODO: make a stations list model
+
+
+@runtime_checkable
 class StateStore(Protocol):
     def batch_session(self) -> ContextManager: ...
     def set_kv(self, key: str, value: str, expiry) -> None: ...
@@ -15,6 +22,8 @@ class StateStore(Protocol):
 
 @runtime_checkable
 class StaticStore(Protocol):
+    def get_nearby_stations(self, lat, long, count) -> list[dict]: ...
+
     def get_scheduled_arrivals(
         self, stop_id: str, lookahead_minutes: int = 60
     ) -> list[dict[str, Any]]: ...
@@ -33,4 +42,4 @@ class StaticStore(Protocol):
         ilike_query: str,
         has_single_char: bool,
         regex_pattern: str | None = None,
-    ): ...
+    ) -> list[dict]: ...

@@ -25,3 +25,10 @@ async def stop_search(
 ):
     result = reader.fuzzy_station_search(search_string)
     return result
+
+
+@router.get("/stops/search/coords")
+async def get_nearby_stops(
+    lat: float, lon: float, count: int, reader: StopReader = Depends(get_stop_reader)
+):
+    return reader.get_nearby_stops(lat, lon, count)

@@ -7,7 +7,7 @@ from transit_core.core.repository import TripReader
 router = APIRouter()
 
 
-@router.get("/trips/{trip_id}/arrivals", response_model=list[schemas.TripResponse])
+@router.get("/planner", response_model=list[schemas.TripResponse])
 async def get_arrivals(trip_id: str, reader: TripReader = Depends(get_trip_reader)):
     results = reader.get_trip_arrivals(trip_id)
     if not results:
