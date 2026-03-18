@@ -1,7 +1,7 @@
 services:
   api:
     volumes:
-      - .:/app
+      - ..:/app
       - /app/.venv
     ports:
       - "8000:8000"
@@ -14,7 +14,7 @@ services:
 
   hydrator:
     volumes:
-      - .:/app
+      - ..:/app
       - /app/.venv
 
   postgres:

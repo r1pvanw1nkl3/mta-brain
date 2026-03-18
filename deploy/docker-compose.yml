@@ -1,8 +1,11 @@
+name: mta-brain
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     image: transit-brain-nyc:latest
-    env_file: .env
+    env_file: ../.env
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -22,10 +25,12 @@ services:
       - mta-brain-net
 
   hydrator:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     image: transit-brain-nyc:latest
     command: python -m services.subway_live_hydrator.runner
-    env_file: .env
+    env_file: ../.env
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -68,7 +73,7 @@ services:
     image: flyway/flyway
     container_name: mta-brain-flyway
     volumes:
-      - ./sql:/flyway/sql
+      - ../sql:/flyway/sql
     environment:
       - FLYWAY_URL=jdbc:postgresql://postgres:5432/${DB_NAME}
       - FLYWAY_USER=postgres
@@ -92,7 +97,7 @@ services:
     networks:
       - mta-brain-net
     volumes:
-      - ./data/osrm:/data
+      - ../data/osrm:/data
     command: osrm-routed --algorithm mld /data/nyc_buffered_extract.osrm
     ports:
       - "5005:5000"
