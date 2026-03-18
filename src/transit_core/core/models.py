@@ -16,6 +16,11 @@ class Arrival(BaseModel):
     status: str
 
 
+class Coordinates(BaseModel):
+    lat: float
+    lon: float
+
+
 # Static GTFS Models
 
 

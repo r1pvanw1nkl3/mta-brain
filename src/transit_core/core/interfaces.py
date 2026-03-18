@@ -1,11 +1,13 @@
 from typing import Any, ContextManager, Protocol, runtime_checkable
 
+from transit_core.core.models import Coordinates
+
 
 @runtime_checkable
 class StreetRoutingService(Protocol):
-    def get_walking_directions(user_lat: float, user_lon: float, stations: list): ...
-
-    # TODO: make a stations list model
+    async def get_walk_times(
+        self, user_location: Coordinates, stop_locations: dict[int, Coordinates]
+    ) -> dict[int, float]: ...
 
 
 @runtime_checkable
