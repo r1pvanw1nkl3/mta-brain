@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 
 from transit_core.api import schemas
 from transit_core.api.dependencies import get_stop_reader
+from transit_core.api.schemas import StopSearchResponse
+from transit_core.core.models import Coordinates
 from transit_core.core.repository import StopReader
 
 router = APIRouter()
@@ -19,16 +21,21 @@ async def get_arrivals(
     return arrivals
 
 
-@router.get("/stops/search/")
+@router.get("/stops/search", response_model=list[StopSearchResponse])
 async def stop_search(
     search_string: str, reader: StopReader = Depends(get_stop_reader)
 ):
     result = reader.fuzzy_station_search(search_string)
-    return result
+    return [schemas.StopSearchResponse.model_validate(row) for row in result]
 
 
-@router.get("/stops/search/coords")
+@router.get("/stops/search/coords", response_model=list[schemas.NearbyStopsResponse])
 async def get_nearby_stops(
-    lat: float, lon: float, count: int, reader: StopReader = Depends(get_stop_reader)
+    lat: float,
+    lon: float,
+    count: int,
+    reader: StopReader = Depends(get_stop_reader),
 ):
-    return reader.get_nearby_stops(lat, lon, count)
+    result = reader.get_nearby_stops(Coordinates(lat=lat, lon=lon), count)
+
+    return [schemas.NearbyStopsResponse.model_validate(row) for row in result]

@@ -30,6 +30,13 @@ class ArrivalResponse(BaseModel):
         return _get_clock_time(self.arrival_time)
 
 
+class NearbyArrivalsBoardResponse(BaseModel):
+    gtfs_stop_id: str
+    stop_name: str
+    arrivals: list[ArrivalResponse]
+    walk_time: float
+
+
 class TripResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     stop_id: str = Field(exclude=True)
@@ -44,3 +51,22 @@ class TripResponse(BaseModel):
     @computed_field
     def departure(self) -> str:
         return _get_clock_time(self.departure_time)
+
+
+class NearbyStopsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    stop_name: str
+    gtfs_stop_id: str
+    line: str
+    entrance_latitude: float
+    entrance_longitude: float
+    dist_meters: float
+
+
+class StopSearchResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    stop_id: str
+    stop_name: str
+    routes: str
+    rank: int

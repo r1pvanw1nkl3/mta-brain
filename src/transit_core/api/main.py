@@ -32,8 +32,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(stops.router, prefix="/v1")
-app.include_router(trips.router, prefix="/v1")
+app.include_router(stops.router, prefix="/v1", tags=["Stops"])
+app.include_router(trips.router, prefix="/v1", tags=["Trips"])
 
 
 if __name__ == "__main__":

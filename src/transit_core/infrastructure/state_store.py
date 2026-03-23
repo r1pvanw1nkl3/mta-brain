@@ -1,8 +1,9 @@
 import logging
 import threading
 from contextlib import contextmanager
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
+from transit_core.core.interfaces import StateStore
 from transit_core.redis_client import RedisClient
 
 logger = logging.getLogger(__name__)
@@ -69,3 +70,7 @@ class RedisStateStore:
         else:
             client.set(key, timestamp)
             return True
+
+
+if TYPE_CHECKING:
+    _: StateStore = RedisStateStore(RedisClient())

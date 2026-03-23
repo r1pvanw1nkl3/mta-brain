@@ -1,7 +1,7 @@
 from enum import IntEnum
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 # Domain Models
 
@@ -21,6 +21,13 @@ class Coordinates(BaseModel):
     lon: float
 
 
+class NearbyArrivalsBoard(BaseModel):
+    gtfs_stop_id: str
+    stop_name: str
+    arrivals: list[Arrival]
+    walk_time: float
+
+
 # Static GTFS Models
 
 
@@ -35,6 +42,37 @@ class Station(StationSummary):
     lat: float = Field(validation_alias="stop_lat")
     lon: float = Field(validation_alias="stop_lon")
     parent_station: Optional[str]
+
+
+class NearbyStop(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    stop_name: str
+    gtfs_stop_id: str
+    line: str
+    entrance_coordinates: Coordinates
+    dist_meters: float
+
+    @model_validator(mode="before")
+    @classmethod
+    def create_coordinates(cls, data: Any) -> Any:
+        data_dict = dict(data)
+
+        if "entrance_latitude" in data_dict and "entrance_longitude" in data_dict:
+            data_dict["entrance_coordinates"] = {
+                "lat": data_dict.pop("entrance_latitude"),
+                "lon": data_dict.pop("entrance_longitude"),
+            }
+        return data_dict
+
+
+class StopSearchResult(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    stop_id: str
+    stop_name: str
+    routes: str
+    rank: int
 
 
 # GTFS models
