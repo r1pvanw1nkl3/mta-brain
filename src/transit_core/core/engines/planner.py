@@ -18,9 +18,7 @@ class PlannerEngine:
         }
 
         # 2. Build our parameter and call OSRM
-        stop_coords_dict = {
-            stop.id: stop.entrance_coordinates for stop in nearby_stops.values()
-        }
+        stop_coords_dict = {stop.id: stop.coordinates for stop in nearby_stops.values()}
 
         distances = await self.routing_service.get_walk_times(
             user_location=location, stop_locations=stop_coords_dict
@@ -30,23 +28,23 @@ class PlannerEngine:
         stops_within_range: dict[str, float] = {}
 
         for stop in nearby_stops.values():
-            if (walk_time := distances.get(stop.id)) is not None and walk_time <= (
-                max_walk_time_mins * 60
-            ):
-                stops_within_range[stop.gtfs_stop_id] = walk_time / 60
+            if (
+                walk_time_seconds := distances.get(stop.id)
+            ) is not None and walk_time_seconds <= (max_walk_time_mins * 60):
+                stops_within_range[stop.gtfs_stop_id] = walk_time_seconds / 60
 
         # 4. Build our output model, sort, return
 
         arrivals_boards: list[NearbyArrivalsBoard] = []
 
-        for gtfs_stop_id, walk_time in stops_within_range.items():
+        for gtfs_stop_id, walk_time_minutes in stops_within_range.items():
             board = NearbyArrivalsBoard(
                 gtfs_stop_id=gtfs_stop_id,
                 stop_name=nearby_stops[gtfs_stop_id].stop_name,
                 arrivals=self.stop_reader.get_arrivals_board(
                     stop_id=gtfs_stop_id, get_schedules=False
                 ),
-                walk_time=walk_time,
+                walk_time=walk_time_minutes,
             )
 
             arrivals_boards.append(board)

@@ -1,8 +1,9 @@
 import time
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
 def _get_clock_time(time: int) -> str:
@@ -31,6 +32,7 @@ class ArrivalResponse(BaseModel):
 
 
 class NearbyArrivalsBoardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     gtfs_stop_id: str
     stop_name: str
     arrivals: list[ArrivalResponse]
@@ -58,9 +60,27 @@ class NearbyStopsResponse(BaseModel):
     stop_name: str
     gtfs_stop_id: str
     line: str
-    entrance_latitude: float
-    entrance_longitude: float
+    lat: float
+    lon: float
     dist_meters: float
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_coords(cls, data: Any) -> Any:
+        if hasattr(data, "coordinates"):
+            data_dict = {
+                "stop_name": data.stop_name,
+                "gtfs_stop_id": data.gtfs_stop_id,
+                "line": data.line,
+                "lat": data.coordinates.lat,
+                "lon": data.coordinates.lon,
+                "dist_meters": data.dist_meters,
+            }
+            return data_dict
+        if isinstance(data, dict) and "coordinates" in data:
+            coords = data.get("coordinates", {})
+            data["lat"] = coords.get("lat")
+            data["lon"] = coords.get("lon")
 
 
 class StopSearchResponse(BaseModel):

@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     redis_gtfs_ttl: int = 300
     trip_metadata_ttl: int = 3600
 
+    osrm_url: str = "http://localhost:5005"
+
     arrivals_window_past_seconds: int = 300
     fuzzy_match_window_seconds: int = 900
     recently_passed_filter_seconds: int = 60

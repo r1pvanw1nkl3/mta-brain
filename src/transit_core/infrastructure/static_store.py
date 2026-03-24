@@ -32,6 +32,7 @@ class PostgresStaticStore:
                     true
                 ) as dist_meters
             FROM subway_entrances
+            WHERE entry_allowed = true
             ORDER BY
                 gtfs_stop_id, -- Required by DISTINCT ON to be the first sort key
                 entrance_location <-> ST_SetSRID(ST_MakePoint(%s, %s), 4326))
@@ -43,7 +44,7 @@ class PostgresStaticStore:
             with self.pool.connection() as conn:
                 results = conn.execute(
                     query,
-                    (coords.lat, coords.lon, coords.lat, coords.lon, count),
+                    (coords.lon, coords.lat, coords.lon, coords.lat, count),
                 ).fetchall()
                 return [NearbyStop.model_validate(row) for row in results]
 

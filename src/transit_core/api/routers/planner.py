@@ -1,16 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from transit_core.api import schemas
-from transit_core.api.dependencies import get_trip_reader
-from transit_core.core.repository import TripReader
+from transit_core.api.dependencies import get_planner_engine
+from transit_core.core.engines.planner import PlannerEngine
+from transit_core.core.models import Coordinates
 
 router = APIRouter()
 
 
-@router.get("/planner", response_model=list[schemas.TripResponse])
-async def get_arrivals(trip_id: str, reader: TripReader = Depends(get_trip_reader)):
-    results = reader.get_trip_arrivals(trip_id)
-    if not results:
-        raise HTTPException(status_code=404, detail=f"Trip {trip_id} not found")
+@router.get("/planner/nearby", response_model=list[schemas.NearbyArrivalsBoardResponse])
+async def get_nearby_arrivals(
+    lat: float,
+    lon: float,
+    max_walk_time: int,
+    planner: PlannerEngine = Depends(get_planner_engine),
+):
+    boards = await planner.get_nearby_arrivals(
+        Coordinates(lat=lat, lon=lon), max_walk_time
+    )
 
-    return results
+    if not boards:
+        raise HTTPException(
+            status_code=404,
+            detail="No stops within range found for provided coordinates.",
+        )
+    return boards

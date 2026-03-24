@@ -32,4 +32,4 @@ def setup_logging(path: str = "logs/app.log"):
 
     logger = logging.getLogger(__name__)
     # Note: This will now go safely to stderr (and show up in Claude logs)
-    logger.info("Logging configured. Standard output reserved for MCP protocol.")
+    logger.info("Logging configured.")

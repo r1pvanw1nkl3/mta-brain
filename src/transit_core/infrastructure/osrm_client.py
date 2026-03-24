@@ -54,7 +54,7 @@ class OsrmClient:
             raise
 
     def _format_coordinates(self, coords: Coordinates) -> str:
-        return f"{coords.lon}, {coords.lat}"
+        return f"{coords.lon},{coords.lat}"
 
 
 if TYPE_CHECKING:

@@ -50,7 +50,7 @@ class NearbyStop(BaseModel):
     stop_name: str
     gtfs_stop_id: str
     line: str
-    entrance_coordinates: Coordinates
+    coordinates: Coordinates
     dist_meters: float
 
     @model_validator(mode="before")
@@ -59,7 +59,7 @@ class NearbyStop(BaseModel):
         data_dict = dict(data)
 
         if "entrance_latitude" in data_dict and "entrance_longitude" in data_dict:
-            data_dict["entrance_coordinates"] = {
+            data_dict["coordinates"] = {
                 "lat": data_dict.pop("entrance_latitude"),
                 "lon": data_dict.pop("entrance_longitude"),
             }
