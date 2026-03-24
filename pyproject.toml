@@ -33,6 +33,7 @@ dev = [
     "httpx>=0.28.1",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.12",
     "testcontainers>=4.14.0",
@@ -42,6 +43,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["transit_core*", "services*"]  # Explicitly tell it to look for your package
+
+[tool.coverage.run]
+omit = ["*_pb2.py"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
