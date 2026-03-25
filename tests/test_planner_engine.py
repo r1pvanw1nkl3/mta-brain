@@ -38,8 +38,7 @@ async def test_get_nearby_arrivals(
             stop_name="Stop A",
             gtfs_stop_id="A1",
             line="A",
-            entrance_latitude=40.751,
-            entrance_longitude=-73.981,
+            coordinates=Coordinates(lat=40.751, lon=-73.981),
             dist_meters=100.0,
         ),
         NearbyStop(
@@ -47,8 +46,7 @@ async def test_get_nearby_arrivals(
             stop_name="Stop B",
             gtfs_stop_id="B1",
             line="B",
-            entrance_latitude=40.752,
-            entrance_longitude=-73.982,
+            coordinates=Coordinates(lat=40.752, lon=-73.982),
             dist_meters=200.0,
         ),
     ]
