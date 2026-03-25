@@ -25,6 +25,7 @@ fi
 HETZNER_USER=${HETZNER_USER:-root}
 PROJECT_DIR_ON_SERVER="~/mta-brain"
 OSRM_DATA_DIR="$PROJECT_ROOT/data/osrm"
+OSRM_PROFILES_DIR="$PROJECT_ROOT/profiles"
 
 # Bounding box for NYC + Westchester buffer + NJ shore
 # Format: min_lon,min_lat,max_lon,max_lat
@@ -56,8 +57,8 @@ echo "✅ Cropped map successfully to ${OSRM_PREFIX}.osm.pbf."
 # 4. Extract and build the routing graph using OSRM Docker locally
 echo "🏗️  Building OSRM routing graph (this may take a while and use high CPU/RAM)..."
 
-# Extract
-docker run --rm -v "$OSRM_DATA_DIR":/data osrm/osrm-backend:latest osrm-extract -p /opt/car.lua /data/${OSRM_PREFIX}.osm.pbf
+# Extract using our custom NYC pedestrian profile
+docker run --rm -v "$OSRM_DATA_DIR":/data -v "$OSRM_PROFILES_DIR":/profiles osrm/osrm-backend:latest osrm-extract -p /profiles/foot_nyc.lua /data/${OSRM_PREFIX}.osm.pbf
 
 # Partition (for Multi-Level Dijkstra - MLD)
 docker run --rm -v "$OSRM_DATA_DIR":/data osrm/osrm-backend:latest osrm-partition /data/${OSRM_PREFIX}.osrm
@@ -83,6 +84,6 @@ rsync -avz --progress \
 
 # 6. Restart OSRM container on the server
 echo "🔄 Restarting OSRM service on the Hetzner server..."
-ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "cd ${PROJECT_DIR_ON_SERVER} && docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d osrm"
+ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "cd ${PROJECT_DIR_ON_SERVER} && docker compose -f deploy/docker-compose.yml -f deploy/docker-compose-prod.yml restart osrm"
 
 echo "🎉 OSRM Map Deployment Pipeline Complete!"
