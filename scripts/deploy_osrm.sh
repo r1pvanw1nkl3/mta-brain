@@ -30,7 +30,7 @@ OSRM_DATA_DIR="$PROJECT_ROOT/data/osrm"
 # Format: min_lon,min_lat,max_lon,max_lat
 BBOX="-74.3,40.45,-73.65,41.1"
 
-MAP_URL="https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf"
+MAP_URL="https://download.geofabrik.de/north-america/us/new-york-260323.osm.pbf"
 PBF_FILE="new-york-latest.osm.pbf"
 OSRM_PREFIX="nyc_buffered_extract"
 
@@ -40,15 +40,15 @@ mkdir -p "$OSRM_DATA_DIR"
 # 2. Download the full New York state map data
 echo "📥 Downloading latest New York map from Geofabrik..."
 if [ ! -f "$OSRM_DATA_DIR/$PBF_FILE" ]; then
-    curl -o "$OSRM_DATA_DIR/$PBF_FILE" "$MAP_URL"
+    curl -L -o "$OSRM_DATA_DIR/$PBF_FILE" "$MAP_URL"
 else
     echo "✅ $PBF_FILE already exists locally. Skipping download."
 fi
 
-# 3. Crop the map using osmium inside a lightweight Alpine container
+# 3. Crop the map using osmium inside a lightweight Ubuntu container
 echo "✂️  Cropping map to NYC + Westchester buffer (BBOX: $BBOX)..."
-docker run --rm -v "$OSRM_DATA_DIR":/data alpine sh -c "
-    apk add --no-cache osmium-tool && \
+docker run --rm -v "$OSRM_DATA_DIR":/data ubuntu:22.04 sh -c "
+    apt-get update && apt-get install -y osmium-tool && \
     osmium extract -b $BBOX /data/$PBF_FILE -o /data/${OSRM_PREFIX}.osm.pbf --overwrite
 "
 echo "✅ Cropped map successfully to ${OSRM_PREFIX}.osm.pbf."
@@ -71,10 +71,11 @@ echo "✅ OSRM graph successfully built locally."
 echo "🚢 Deploying OSRM data to Hetzner server ($HETZNER_USER@$HETZNER_IP)..."
 
 # Ensure the target directory exists on the server
-ssh "${HETZNER_USER}@${HETZNER_IP}" "mkdir -p ${PROJECT_DIR_ON_SERVER}/data/osrm"
+ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "mkdir -p ${PROJECT_DIR_ON_SERVER}/data/osrm"
 
 # Rsync ONLY the processed OSRM files (exclude massive raw .osm.pbf files)
 rsync -avz --progress \
+    -e "ssh -o StrictHostKeyChecking=accept-new" \
     --include="${OSRM_PREFIX}.*" \
     --exclude="*" \
     "$OSRM_DATA_DIR/" \
@@ -82,6 +83,6 @@ rsync -avz --progress \
 
 # 6. Restart OSRM container on the server
 echo "🔄 Restarting OSRM service on the Hetzner server..."
-ssh "${HETZNER_USER}@${HETZNER_IP}" "cd ${PROJECT_DIR_ON_SERVER} && docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d osrm"
+ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "cd ${PROJECT_DIR_ON_SERVER} && docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d osrm"
 
 echo "🎉 OSRM Map Deployment Pipeline Complete!"
