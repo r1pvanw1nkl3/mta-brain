@@ -1,15 +1,21 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
 import transit_core.core.models as md
-from transit_core.api.dependencies import get_stop_reader, get_trip_reader
+from transit_core.api.dependencies import (
+    get_planner_engine,
+    get_stop_reader,
+    get_trip_reader,
+)
 from transit_core.api.main import app
+from transit_core.core.engines.planner import PlannerEngine
 from transit_core.core.repository import StopReader, TripReader
 
 # Mock readers
 mock_stop_reader = MagicMock(spec=StopReader)
 mock_trip_reader = MagicMock(spec=TripReader)
+mock_planner_engine = AsyncMock(spec=PlannerEngine)
 
 
 def override_get_stop_reader():
@@ -20,8 +26,13 @@ def override_get_trip_reader():
     return mock_trip_reader
 
 
+def override_get_planner_engine():
+    return mock_planner_engine
+
+
 app.dependency_overrides[get_stop_reader] = override_get_stop_reader
 app.dependency_overrides[get_trip_reader] = override_get_trip_reader
+app.dependency_overrides[get_planner_engine] = override_get_planner_engine
 
 client = TestClient(app)
 
@@ -76,25 +87,6 @@ def test_get_trip_arrivals_not_found():
     assert response.json()["detail"] == "Trip T1 not found"
 
 
-def test_get_trip_status():
-    mock_trip_reader.get_trip_status.return_value = md.TripUpdate(
-        trip=md.Trip(trip_id="T1", route_id="1", start_date=20260211)
-    )
-
-    response = client.get("/v1/trips/T1/status")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["trip"]["trip_id"] == "T1"
-
-
-def test_get_trip_status_none():
-    mock_trip_reader.get_trip_status.return_value = None
-
-    response = client.get("/v1/trips/T1/status")
-    assert response.status_code == 200
-    assert response.json() is None
-
-
 def test_stop_search():
     mock_stop_reader.fuzzy_station_search.return_value = [
         {"stop_id": "101", "stop_name": "242 St", "routes": "1", "rank": 1.0}
@@ -105,3 +97,43 @@ def test_stop_search():
     data = response.json()
     assert len(data) == 1
     assert data[0]["stop_id"] == "101"
+
+
+def test_get_nearby_arrivals():
+    # Setup mock data for planner engine
+    mock_planner_engine.get_nearby_arrivals.return_value = [
+        md.NearbyArrivalsBoard(
+            gtfs_stop_id="A1",
+            stop_name="Stop A",
+            walk_time=10.0,
+            arrivals=[
+                md.Arrival(
+                    trip_id="T1",
+                    route_id="1",
+                    headsign="Northbound",
+                    direction="N",
+                    arrival_time=1700000600,
+                    status="LIVE",
+                    is_realtime=True,
+                )
+            ],
+        )
+    ]
+
+    response = client.get("/v1/planner/nearby?lat=40.75&lon=-73.98&max_walk_time=25")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["gtfs_stop_id"] == "A1"
+    assert data[0]["walk_time"] == 10.0
+
+
+def test_get_nearby_arrivals_not_found():
+    mock_planner_engine.get_nearby_arrivals.return_value = []
+
+    response = client.get("/v1/planner/nearby?lat=40.75&lon=-73.98&max_walk_time=25")
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == "No stops within range found for provided coordinates."
+    )

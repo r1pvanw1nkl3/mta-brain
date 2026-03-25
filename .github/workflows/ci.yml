@@ -28,7 +28,7 @@ jobs:
           - 6379:6379
 
       postgres:
-        image: postgres:16-alpine
+        image: postgis/postgis:16-3.4-alpine
         env:
           POSTGRES_USER: etl_user
           POSTGRES_PASSWORD: password
@@ -66,6 +66,7 @@ jobs:
           # Create the app_user role so migrations can grant permissions to it
           docker exec ${{ job.services.postgres.id }} psql -U etl_user -d mta_db_test \
             -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" \
+            -c "CREATE EXTENSION IF NOT EXISTS postgis;" \
             -c "CREATE USER app_user WITH PASSWORD 'password';"
 
       - name: Run Migrations

@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     redis_gtfs_ttl: int = 300
     trip_metadata_ttl: int = 3600
 
+    osrm_url: str = "http://localhost:5005"
+
     arrivals_window_past_seconds: int = 300
     fuzzy_match_window_seconds: int = 900
     recently_passed_filter_seconds: int = 60
@@ -54,6 +56,9 @@ class Settings(BaseSettings):
     log_file_path: str = "logs/app.log"
     etl_log_file_path: str = "logs/etl.log"
     gtfs_static_path: str = "gtfs_static"
+    subway_entrances_url: str = (
+        "https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD"
+    )
 
     @computed_field
     def etl_database_url(self) -> str:

@@ -1,5 +1,14 @@
 from typing import Any, ContextManager, Protocol, runtime_checkable
 
+from transit_core.core.models import Coordinates, NearbyStop, StopSearchResult
+
+
+@runtime_checkable
+class StreetRoutingService(Protocol):
+    async def get_walk_times(
+        self, user_location: Coordinates, stop_locations: dict[int, Coordinates]
+    ) -> dict[int, float]: ...
+
 
 @runtime_checkable
 class StateStore(Protocol):
@@ -15,6 +24,8 @@ class StateStore(Protocol):
 
 @runtime_checkable
 class StaticStore(Protocol):
+    def get_nearby_stops(self, coords: Coordinates, count: int) -> list[NearbyStop]: ...
+
     def get_scheduled_arrivals(
         self, stop_id: str, lookahead_minutes: int = 60
     ) -> list[dict[str, Any]]: ...
@@ -33,4 +44,4 @@ class StaticStore(Protocol):
         ilike_query: str,
         has_single_char: bool,
         regex_pattern: str | None = None,
-    ): ...
+    ) -> list[StopSearchResult]: ...

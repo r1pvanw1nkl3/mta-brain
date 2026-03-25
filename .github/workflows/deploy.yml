@@ -20,7 +20,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ".,!.git/,!.github/,!.venv/,!**/__pycache__/,!logs/,!tests/"
+          source: ".,!.git/,!.github/,!.venv/,!**/__pycache__/,!logs/,!tests/,!data/"
           target: "/root/mta-brain"
           rm: true
 
@@ -40,6 +40,8 @@ jobs:
             ETL_DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_NAME=mta_brain
             REDIS_HOST=redis
+            COMPOSE_FILE=deploy/docker-compose.yml:deploy/docker-compose-prod.yml
+            COMPOSE_PROJECT_DIR=.
             EOF
 
       - name: Restart Containers
@@ -53,7 +55,7 @@ jobs:
             cd /root/mta-brain
 
             echo "Building and starting services..."
-            docker compose -f docker-compose.yml -f docker-compose-prod.yml up -d --build --remove-orphans
+            docker compose up -d --build --remove-orphans
 
             echo "Deployment Complete!"
             docker compose ps

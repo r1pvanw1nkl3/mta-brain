@@ -1,8 +1,11 @@
+name: mta-brain
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     image: transit-brain-nyc:latest
-    env_file: .env
+    env_file: ../.env
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -11,6 +14,7 @@ services:
       - APP_DB_PASSWORD=${APP_DB_PASSWORD}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - OSRM_URL=http://osrm:5000
     depends_on:
       postgres:
         condition: service_healthy
@@ -22,10 +26,12 @@ services:
       - mta-brain-net
 
   hydrator:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     image: transit-brain-nyc:latest
     command: python -m services.subway_live_hydrator.runner
-    env_file: .env
+    env_file: ../.env
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -36,8 +42,8 @@ services:
       - mta-brain-net
 
   postgres:
-    image: postgres:16-alpine
-    shm_size: 128mb
+    image: postgis/postgis:16-3.4-alpine
+    shm_size: 256mb
     environment:
       - POSTGRES_DB=mta_brain
       - POSTGRES_USER=postgres
@@ -68,7 +74,7 @@ services:
     image: flyway/flyway
     container_name: mta-brain-flyway
     volumes:
-      - ./sql:/flyway/sql
+      - ../sql:/flyway/sql
     environment:
       - FLYWAY_URL=jdbc:postgresql://postgres:5432/${DB_NAME}
       - FLYWAY_USER=postgres
@@ -78,12 +84,28 @@ services:
       - FLYWAY_PLACEHOLDERS_APP_PASSWORD=${APP_DB_PASSWORD}
       - FLYWAY_LOCATIONS=filesystem:/flyway/sql
       - FLYWAY_CONNECT_RETRIES=60
-    command: -baselineOnMigrate=true migrate
+    command: -baselineOnMigrate=true -baselineVersion=0 migrate
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - mta-brain-net
+
+  osrm:
+    image: osrm/osrm-backend:latest
+    platform: linux/amd64
+    container_name: mta-brain-osrm
+    networks:
+      - mta-brain-net
+    volumes:
+      - ../data/osrm:/data
+    command: osrm-routed --algorithm mld /data/nyc_buffered_extract.osrm
+    ports:
+      - "5005:5000"
+    deploy:
+      resources:
+        limits:
+          memory: 1200m
 
 networks:
   mta-brain-net:

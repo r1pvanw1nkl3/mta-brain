@@ -1,10 +1,13 @@
 from datetime import date, datetime, timedelta
 from logging import getLogger
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from psycopg import Connection, sql
 from psycopg.rows import DictRow
 from psycopg_pool import ConnectionPool
+
+from transit_core.core.interfaces import StaticStore
+from transit_core.core.models import Coordinates, NearbyStop, StopSearchResult
 
 logger = getLogger(__name__)
 
@@ -13,13 +16,58 @@ class PostgresStaticStore:
     def __init__(self, pool: ConnectionPool[Connection[DictRow]]):
         self.pool = pool
 
+    def get_nearby_stops(self, coords: Coordinates, count: int) -> list[NearbyStop]:
+        query = """
+            select * from(
+            SELECT DISTINCT ON (gtfs_stop_id)
+                id,
+                stop_name,
+                gtfs_stop_id,
+                line,
+                entrance_latitude,
+                entrance_longitude,
+                ST_Distance(
+                    entrance_location,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326),
+                    true
+                ) as dist_meters
+            FROM subway_entrances
+            WHERE entry_allowed = true
+            ORDER BY
+                gtfs_stop_id, -- Required by DISTINCT ON to be the first sort key
+                entrance_location <-> ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            order by dist_meters
+            limit %s
+        """
+
+        try:
+            with self.pool.connection() as conn:
+                results = conn.execute(
+                    query,
+                    (coords.lon, coords.lat, coords.lon, coords.lat, count),
+                ).fetchall()
+                return [NearbyStop.model_validate(row) for row in results]
+
+        except Exception as e:
+            logger.exception(
+                "Failed when performing nearby station search:",
+                extra={
+                    "lat": coords.lat,
+                    "long": coords.lon,
+                    "count": count,
+                    "error": str(e),
+                },
+            )
+
+        return []
+
     def fuzzy_station_search(
         self,
         search_query: str,
         ilike_query: str,
         has_single_char: bool,
         regex_pattern: str | None = None,
-    ):
+    ) -> list[StopSearchResult]:
         query = """
                 SELECT
                     s.stop_id,
@@ -61,7 +109,9 @@ class PostgresStaticStore:
                         ilike_query,
                     ),
                 ).fetchall()
-                return results
+
+                return [StopSearchResult.model_validate(row) for row in results]
+
         except Exception as e:
             logger.exception(
                 "Failed when performing fuzzy station search:",
@@ -223,3 +273,7 @@ class PostgresStaticStore:
     def _to_epoch(self, arrival_delta: timedelta) -> int:
         service_day = datetime.combine(date.today(), datetime.min.time())
         return int((service_day + arrival_delta).timestamp())
+
+
+if TYPE_CHECKING:
+    _: StaticStore = PostgresStaticStore(ConnectionPool())

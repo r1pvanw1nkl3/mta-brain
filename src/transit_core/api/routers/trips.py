@@ -14,8 +14,3 @@ async def get_arrivals(trip_id: str, reader: TripReader = Depends(get_trip_reade
         raise HTTPException(status_code=404, detail=f"Trip {trip_id} not found")
 
     return results
-
-
-@router.get("/trips/{trip_id}/status")
-async def get_status(trip_id: str, reader: TripReader = Depends(get_trip_reader)):
-    return reader.get_trip_status(trip_id)

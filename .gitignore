@@ -1,43 +1,92 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-
-# UV Virtual Environment
-/.venv
-
-# VS Code
-/.vscode
-
-# OS Files
+# ==============================================================================
+# OS Specific Files
+# ==============================================================================
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Thumbs.db
+.db
+desktop.ini
 
-# logging
-/logs
+# ==============================================================================
+# Development Environments & Virtual Envs
+# ==============================================================================
+# Python environments
+.venv/
+venv/
+ENV/
+env/
 
-#Downloaded GTFS data
-/gtfs_static
+# UV Environment
+.uv/
 
-#env
-.env
+#Cargo
+.cargo/
 
+# ==============================================================================
+# Python Build & Artifacts
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.python-version
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==============================================================================
+# IDEs & Editors
+# ==============================================================================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains (PyCharm, etc.)
+.idea/
+
+# LSP & Clojure Tools
+.lsp/
 .clj-kondo/
 
-.lsp/
-
+# ==============================================================================
+# Testing & Linting Caches
+# ==============================================================================
 .pytest_cache/
-
 .ruff_cache/
-mynotes.md
-mta_dump.json
-model_dump.json
-raw_dump.json
-.gemini/
-src/transit_core/scripts/86th_st_arrivals.py
-CLAUDE.md
-GEMINI.md
 .coverage
-TODO.md
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.pyo
+
+# ==============================================================================
+# Logs & Temporary Data
+# ==============================================================================
+logs/
+*.log
+
+# ==============================================================================
+# Project Specific Data & Config
+# ==============================================================================
+# Local environment variables
+.env
+.env.local
+
+# GTFS Static Data
+gtfs_static/
+
+# Utility Data & OSRM
+data/
+
+# ==============================================================================
+# Personal / Scratch Files
+# ==============================================================================
+scratch/

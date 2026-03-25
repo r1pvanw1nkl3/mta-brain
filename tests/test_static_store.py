@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from transit_core.core.models import Coordinates
 from transit_core.infrastructure.static_store import PostgresStaticStore
 
 
@@ -12,6 +13,66 @@ def mock_pool():
     conn = MagicMock()
     pool.connection.return_value.__enter__.return_value = conn
     return pool, conn
+
+
+def test_get_nearby_stops(mock_pool):
+    pool, conn = mock_pool
+    # Mock data matches NearbyStop fields
+    conn.execute.return_value.fetchall.return_value = [
+        {
+            "id": 1,
+            "stop_name": "Times Sq",
+            "gtfs_stop_id": "123",
+            "line": "Broadway",
+            "entrance_latitude": 40.75,
+            "entrance_longitude": -73.98,
+            "dist_meters": 150.0,
+        }
+    ]
+    store = PostgresStaticStore(pool)
+    coords = Coordinates(lat=40.75, lon=-73.98)
+    stops = store.get_nearby_stops(coords, 5)
+
+    assert len(stops) == 1
+    assert stops[0].stop_name == "Times Sq"
+    assert stops[0].dist_meters == 150.0
+
+
+def test_get_nearby_stops_exception(mock_pool):
+    pool, conn = mock_pool
+    conn.execute.side_effect = Exception("DB Error")
+    store = PostgresStaticStore(pool)
+    coords = Coordinates(lat=40.75, lon=-73.98)
+    stops = store.get_nearby_stops(coords, 5)
+
+    assert stops == []
+
+
+def test_fuzzy_station_search(mock_pool):
+    pool, conn = mock_pool
+    conn.execute.return_value.fetchall.return_value = [
+        {
+            "stop_id": "101",
+            "stop_name": "242 St",
+            "routes": "1",
+            "rank": 1.0,
+        }
+    ]
+    store = PostgresStaticStore(pool)
+    results = store.fuzzy_station_search("242", "242", False, None)
+
+    assert len(results) == 1
+    assert results[0].stop_name == "242 St"
+    assert results[0].stop_id == "101"
+
+
+def test_fuzzy_station_search_exception(mock_pool):
+    pool, conn = mock_pool
+    conn.execute.side_effect = Exception("DB Error")
+    store = PostgresStaticStore(pool)
+    results = store.fuzzy_station_search("242", "242", False, None)
+
+    assert results == []
 
 
 def test_get_stop_name(mock_pool):
