@@ -21,11 +21,11 @@ class Coordinates(BaseModel):
     lon: float
 
 
-class NearbyArrivalsBoard(BaseModel):
+class ArrivalsBoard(BaseModel):
     gtfs_stop_id: str
     stop_name: str
     arrivals: list[Arrival]
-    walk_time: float
+    walk_time: Optional[float] = None
 
 
 # Static GTFS Models

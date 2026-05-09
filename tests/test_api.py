@@ -102,7 +102,7 @@ def test_stop_search():
 def test_get_nearby_arrivals():
     # Setup mock data for planner engine
     mock_planner_engine.get_nearby_arrivals.return_value = [
-        md.NearbyArrivalsBoard(
+        md.ArrivalsBoard(
             gtfs_stop_id="A1",
             stop_name="Stop A",
             walk_time=10.0,

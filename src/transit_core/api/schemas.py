@@ -1,6 +1,6 @@
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
@@ -31,12 +31,12 @@ class ArrivalResponse(BaseModel):
         return _get_clock_time(self.arrival_time)
 
 
-class NearbyArrivalsBoardResponse(BaseModel):
+class ArrivalsBoardResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     gtfs_stop_id: str
     stop_name: str
     arrivals: list[ArrivalResponse]
-    walk_time: float
+    walk_time: Optional[float]
 
 
 class TripResponse(BaseModel):

@@ -9,7 +9,11 @@ from transit_core.core.repository import StopReader
 router = APIRouter()
 
 
-@router.get("/stops/{stop_id}/arrivals", response_model=list[schemas.ArrivalResponse])
+@router.get(
+    "/stops/{stop_id}/arrivals",
+    response_model=schemas.ArrivalsBoardResponse,
+    response_model_exclude_none=True,
+)
 async def get_arrivals(
     stop_id: str, live: bool = False, reader: StopReader = Depends(get_stop_reader)
 ):

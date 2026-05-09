@@ -5,7 +5,7 @@ import time
 import transit_core.core.models as md
 from transit_core.config import get_settings
 from transit_core.core.interfaces import StateStore, StaticStore
-from transit_core.core.models import Coordinates, NearbyStop
+from transit_core.core.models import ArrivalsBoard, Coordinates, NearbyStop
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class StopReader:
 
     def get_arrivals_board(
         self, stop_id: str, lookahead_min: int = 60, get_schedules: bool = True
-    ) -> list[md.Arrival]:
+    ) -> md.ArrivalsBoard:
         stop_id = stop_id.upper()
         now_ts = int(time.time())
 
@@ -301,8 +301,13 @@ class StopReader:
             for train in unified_board
             if train.arrival_time >= (now_ts - config.recently_passed_filter_seconds)
         ]
+        result = ArrivalsBoard(
+            gtfs_stop_id=stop_id,
+            stop_name=self.get_stop_name(stop_id),
+            arrivals=sorted(final_board, key=lambda x: x.arrival_time),
+        )
 
-        return sorted(final_board, key=lambda x: x.arrival_time)
+        return result
 
     def fuzzy_station_search(self, search_string: str):
         params = self._get_station_search_params(search_string)

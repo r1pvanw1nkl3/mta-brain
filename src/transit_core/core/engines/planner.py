@@ -1,5 +1,5 @@
 from transit_core.core.interfaces import StreetRoutingService
-from transit_core.core.models import Coordinates, NearbyArrivalsBoard
+from transit_core.core.models import ArrivalsBoard, Coordinates
 from transit_core.core.repository import StopReader
 
 
@@ -10,7 +10,7 @@ class PlannerEngine:
 
     async def get_nearby_arrivals(
         self, location: Coordinates, max_walk_time_mins: int = 25
-    ) -> list[NearbyArrivalsBoard]:
+    ) -> list[ArrivalsBoard]:
         # 1. Get 25 nearby stops. Imagine needing more? That's the dream.
         nearby_stops = {
             stop.gtfs_stop_id: stop
@@ -35,17 +35,14 @@ class PlannerEngine:
 
         # 4. Build our output model, sort, return
 
-        arrivals_boards: list[NearbyArrivalsBoard] = []
+        arrivals_boards: list[ArrivalsBoard] = []
 
         for gtfs_stop_id, walk_time_minutes in stops_within_range.items():
-            board = NearbyArrivalsBoard(
-                gtfs_stop_id=gtfs_stop_id,
-                stop_name=nearby_stops[gtfs_stop_id].stop_name,
-                arrivals=self.stop_reader.get_arrivals_board(
-                    stop_id=gtfs_stop_id, get_schedules=False
-                ),
-                walk_time=walk_time_minutes,
+            board = self.stop_reader.get_arrivals_board(
+                stop_id=gtfs_stop_id, get_schedules=False
             )
+
+            board.walk_time = walk_time_minutes
 
             arrivals_boards.append(board)
 

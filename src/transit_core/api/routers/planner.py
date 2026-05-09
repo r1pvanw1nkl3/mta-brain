@@ -8,7 +8,7 @@ from transit_core.core.models import Coordinates
 router = APIRouter()
 
 
-@router.get("/planner/nearby", response_model=list[schemas.NearbyArrivalsBoardResponse])
+@router.get("/planner/nearby", response_model=list[schemas.ArrivalsBoardResponse])
 async def get_nearby_arrivals(
     lat: float,
     lon: float,
