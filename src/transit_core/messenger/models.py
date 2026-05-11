@@ -1,6 +1,9 @@
-from pydantic import BaseModel
+from dataclasses import dataclass
+
+from transit_core.messenger.views import View
 
 
-class Message(BaseModel):
+@dataclass(frozen=True)
+class Message:
     receiver_id: str
-    message_txt: str
+    body: View

@@ -1,20 +1,33 @@
-from transit_core.core.models import Arrival
-from transit_core.messenger.views import Section, Table  # noqa: F401
+import time
+
+from transit_core.core.models import ArrivalsBoard
+from transit_core.messenger.views import Section, Table
 
 
-def present_arrivals_board(arrivals: list[Arrival]) -> Section:
-    rows: list[list[str]] = []
+def _minutes_until(arrival_epoch: int, now: int) -> str:
+    mins = max(0, round((arrival_epoch - now) / 60))
+    return "now" if mins == 0 else f"{mins} min"
 
-    for a in arrivals:
-        rows.append(
-            [
-                a.route_id,
-                a.direction,
-                a.headsign if a.headsign else "",
-                str(a.arrival_time),
-            ]
-        )
 
-    result_table = Table(["Route ID", "Direction", "Destination", "Arrival Time"], rows)
+def present_arrivals_board(
+    arrivals_board: ArrivalsBoard, now: int | None = None
+) -> Section:
+    subtitle = f"Arrivals for {arrivals_board.stop_name}"
 
-    return Section("Arrivals", "Arrivals for station", result_table)
+    if not arrivals_board.arrivals:
+        return Section("Arrivals", subtitle, "No upcoming arrivals.")
+
+    now = now if now is not None else int(time.time())
+
+    rows = [
+        [
+            a.route_id,
+            a.direction,
+            a.headsign or "",
+            _minutes_until(a.arrival_time, now),
+        ]
+        for a in arrivals_board.arrivals
+    ]
+
+    table = Table(["Route", "Direction", "Destination", "ETA"], rows)
+    return Section("Arrivals", subtitle, table)

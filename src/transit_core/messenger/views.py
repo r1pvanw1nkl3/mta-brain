@@ -10,5 +10,8 @@ class Table:
 @dataclass(frozen=True)
 class Section:
     title: str
-    subtitle: str
-    body: Table | str | None
+    subtitle: str | None = None
+    body: Table | str | None = None
+
+
+View = Section | Table | str
