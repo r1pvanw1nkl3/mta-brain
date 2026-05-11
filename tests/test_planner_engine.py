@@ -4,7 +4,7 @@ import pytest
 
 from transit_core.core.engines.planner import PlannerEngine
 from transit_core.core.interfaces import StreetRoutingService
-from transit_core.core.models import Arrival, Coordinates, NearbyStop
+from transit_core.core.models import Arrival, ArrivalsBoard, Coordinates, NearbyStop
 from transit_core.core.repository import StopReader
 
 
@@ -55,17 +55,21 @@ async def test_get_nearby_arrivals(
     mock_routing_service.get_walk_times.return_value = {1: 600.0, 2: 1800.0}
 
     # Mock arrivals
-    mock_stop_reader.get_arrivals_board.return_value = [
-        Arrival(
-            trip_id="T1",
-            route_id="1",
-            headsign="Northbound",
-            direction="N",
-            arrival_time=1700000600,
-            status="LIVE",
-            is_realtime=True,
-        )
-    ]
+    mock_stop_reader.get_arrivals_board.return_value = ArrivalsBoard(
+        gtfs_stop_id="A1",
+        stop_name="Stop A",
+        arrivals=[
+            Arrival(
+                trip_id="T1",
+                route_id="1",
+                headsign="Northbound",
+                direction="N",
+                arrival_time=1700000600,
+                status="LIVE",
+                is_realtime=True,
+            )
+        ],
+    )
 
     # Test with max walk time 25 minutes
     boards = await planner_engine.get_nearby_arrivals(user_loc, max_walk_time_mins=25)

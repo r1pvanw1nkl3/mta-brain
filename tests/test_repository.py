@@ -70,6 +70,7 @@ def test_stop_reader_get_arrivals_board_unified():
     mock_state_store = MagicMock()
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
+    mock_static_store.get_stop_name.return_value = "Test Stop"
     repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
 
     stop_id = "S1"
@@ -107,21 +108,21 @@ def test_stop_reader_get_arrivals_board_unified():
     with patch("time.time", return_value=now):
         board = repo.get_arrivals_board(stop_id)
 
-    assert len(board) == 3
+    assert len(board.arrivals) == 3
 
     # T_ADDED (now + 300)
-    assert board[0].trip_id == "T_ADDED"
-    assert board[0].status == "LIVE-ADDED"
-    assert board[0].arrival_time == now + 300
+    assert board.arrivals[0].trip_id == "T_ADDED"
+    assert board.arrivals[0].status == "LIVE-ADDED"
+    assert board.arrivals[0].arrival_time == now + 300
 
     # T_LIVE (now + 600)
-    assert board[1].trip_id == "T_LIVE"
-    assert board[1].status == "LIVE"
-    assert board[1].arrival_time == now + 600
+    assert board.arrivals[1].trip_id == "T_LIVE"
+    assert board.arrivals[1].status == "LIVE"
+    assert board.arrivals[1].arrival_time == now + 600
 
     # T_GHOST (now + 1200)
-    assert board[2].trip_id == "T_GHOST"
-    assert board[2].status == "SCHEDULED"
+    assert board.arrivals[2].trip_id == "T_GHOST"
+    assert board.arrivals[2].status == "SCHEDULED"
 
 
 def test_trip_writer_get_trip_status_none():
@@ -170,20 +171,20 @@ def test_stop_reader_fuzzy_match_skips_already_matched():
         mock_state_store.get_zset.return_value = {t1: now + 600, t2: now + 610}
         board = repo.get_arrivals_board("S1N")
 
-    assert len(board) == 2
+    assert len(board.arrivals) == 2
     # T1 should match T_S1 (diff 5)
     # T2 should match T_S2 (diff 5) because T_S1 is in matched_static_ids
     # (diff would have been 5 too)
-    matched_ids = [a.trip_id for a in board]
+    matched_ids = [a.trip_id for a in board.arrivals]
     assert t1 in matched_ids
     assert t2 in matched_ids
 
     # Verify both got matched to different static trips
-    headsigns = [a.headsign for a in board]
+    headsigns = [a.headsign for a in board.arrivals]
     assert headsigns == ["D1", "D1"]
 
     # Check that they didn't fall back to LIVE-ADDED
-    assert all(a.status == "LIVE" for a in board)
+    assert all(a.status == "LIVE" for a in board.arrivals)
 
 
 def test_keys():
@@ -313,11 +314,11 @@ def test_stop_reader_get_arrivals_board_specific_platform():
         board = repo.get_arrivals_board(stop_id)
 
     # Should only see the Live T1 (N) and NOT the Scheduled Southbound ghost
-    assert len(board) == 1
-    assert board[0].trip_id == "T1"
-    assert board[0].direction == "N"
-    assert board[0].route_id == "???"
-    assert board[0].headsign == "In Transit"
+    assert len(board.arrivals) == 1
+    assert board.arrivals[0].trip_id == "T1"
+    assert board.arrivals[0].direction == "N"
+    assert board.arrivals[0].route_id == "???"
+    assert board.arrivals[0].headsign == "In Transit"
 
 
 def test_stop_reader_fuzzy_matching_and_inference():
@@ -325,6 +326,7 @@ def test_stop_reader_fuzzy_matching_and_inference():
     mock_state_store = MagicMock()
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
+    mock_static_store.get_stop_name.return_value = "Test Stop"
     repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
 
     # 1. Trip ID with route in it: 081300_B..S66R -> Route B
@@ -345,11 +347,11 @@ def test_stop_reader_fuzzy_matching_and_inference():
     with patch("time.time", return_value=now):
         board = repo.get_arrivals_board("S1S")
 
-    assert len(board) == 1
-    assert board[0].trip_id == trip_id
-    assert board[0].route_id == "B"
-    assert board[0].status == "LIVE"  # Matched fuzzy
-    assert board[0].headsign == "Brighton Beach"
+    assert len(board.arrivals) == 1
+    assert board.arrivals[0].trip_id == trip_id
+    assert board.arrivals[0].route_id == "B"
+    assert board.arrivals[0].status == "LIVE"  # Matched fuzzy
+    assert board.arrivals[0].headsign == "Brighton Beach"
 
 
 def test_stop_reader_static_suffix_fallback():
@@ -357,6 +359,7 @@ def test_stop_reader_static_suffix_fallback():
     mock_state_store = MagicMock()
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
+    mock_static_store.get_stop_name.return_value = "Test Stop"
     repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
 
     trip_id = "LIVE_TRIP"
@@ -372,9 +375,9 @@ def test_stop_reader_static_suffix_fallback():
     with patch("time.time", return_value=now):
         board = repo.get_arrivals_board("L01N")
 
-    assert len(board) == 1
-    assert board[0].route_id == "L"
-    assert board[0].status == "LIVE-ADDED"
+    assert len(board.arrivals) == 1
+    assert board.arrivals[0].route_id == "L"
+    assert board.arrivals[0].status == "LIVE-ADDED"
     assert mock_static_store.get_trip_metadata.call_count == 2
 
 
@@ -383,6 +386,7 @@ def test_stop_reader_drops_old_trains():
     mock_state_store = MagicMock()
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
+    mock_static_store.get_stop_name.return_value = "Test Stop"
     repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
 
     mock_state_store.get_zset.return_value = {}
@@ -406,8 +410,8 @@ def test_stop_reader_drops_old_trains():
     with patch("time.time", return_value=now):
         board = repo.get_arrivals_board("S1")
 
-    assert len(board) == 1
-    assert board[0].trip_id == "RECENT_GHOST"
+    assert len(board.arrivals) == 1
+    assert board.arrivals[0].trip_id == "RECENT_GHOST"
 
 
 def test_stop_reader_with_redis_metadata():
@@ -436,8 +440,8 @@ def test_stop_reader_with_redis_metadata():
     with patch("time.time", return_value=now):
         board = repo.get_arrivals_board("G08N")
 
-    assert len(board) == 1
-    assert board[0].trip_id == trip_id
-    assert board[0].route_id == "G"
-    assert board[0].headsign == "Court Sq"
-    assert board[0].status == "LIVE-ADDED"
+    assert len(board.arrivals) == 1
+    assert board.arrivals[0].trip_id == trip_id
+    assert board.arrivals[0].route_id == "G"
+    assert board.arrivals[0].headsign == "Court Sq"
+    assert board.arrivals[0].status == "LIVE-ADDED"

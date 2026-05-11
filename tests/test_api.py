@@ -39,25 +39,31 @@ client = TestClient(app)
 
 def test_get_arrivals_stop():
     now = 1700000000
-    mock_stop_reader.get_arrivals_board.return_value = [
-        md.Arrival(
-            trip_id="T1",
-            route_id="1",
-            headsign="Northbound",
-            direction="N",
-            arrival_time=now + 600,
-            status="LIVE",
-            is_realtime=True,
-        )
-    ]
+    mock_stop_reader.get_arrivals_board.return_value = md.ArrivalsBoard(
+        gtfs_stop_id="S1",
+        stop_name="Stop 1",
+        arrivals=[
+            md.Arrival(
+                trip_id="T1",
+                route_id="1",
+                headsign="Northbound",
+                direction="N",
+                arrival_time=now + 600,
+                status="LIVE",
+                is_realtime=True,
+            )
+        ],
+    )
 
     response = client.get("/v1/stops/S1/arrivals")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["trip_id"] == "T1"
-    assert "minutes_away" in data[0]
-    assert "clock_time" in data[0]
+    assert data["gtfs_stop_id"] == "S1"
+    assert data["stop_name"] == "Stop 1"
+    assert len(data["arrivals"]) == 1
+    assert data["arrivals"][0]["trip_id"] == "T1"
+    assert "minutes_away" in data["arrivals"][0]
+    assert "clock_time" in data["arrivals"][0]
 
 
 def test_get_trip_arrivals():
