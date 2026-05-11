@@ -1,7 +1,7 @@
 import uuid
 
 from transit_core.messenger.models import Message
-from transit_core.messenger.views import Section, Table, View
+from transit_core.messenger.views import Section, Stack, Table, View
 
 
 class CommandLineAdapter:
@@ -17,6 +17,8 @@ class CommandLineAdapter:
             return view
         if isinstance(view, Table):
             return self._format_table(view)
+        if isinstance(view, Stack):
+            return self._format_stack(view)
         return self._format_section(view)
 
     def _format_section(self, section: Section) -> str:
@@ -27,6 +29,9 @@ class CommandLineAdapter:
             parts.append("")
             parts.append(self.format(section.body))
         return "\n".join(parts)
+
+    def _format_stack(self, stack: Stack) -> str:
+        return "\n\n".join(self.format(item) for item in stack.items)
 
     def _format_table(self, table: Table) -> str:
         widths = [len(h) for h in table.headers]

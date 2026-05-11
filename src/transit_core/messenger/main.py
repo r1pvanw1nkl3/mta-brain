@@ -3,9 +3,11 @@ import asyncio
 from httpx import AsyncClient
 
 from transit_core.config import get_settings
+from transit_core.core.engines.planner import PlannerEngine
 from transit_core.core.repository import StopReader
 from transit_core.db import create_db_pool
 from transit_core.infrastructure.census_gc_client import CensusGCClient
+from transit_core.infrastructure.osrm_client import OsrmClient
 from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.infrastructure.static_store import PostgresStaticStore
 from transit_core.messenger.adapters.command_line import CommandLineAdapter
@@ -32,9 +34,12 @@ async def _run():
     try:
         async with AsyncClient() as http_client:
             geocoder = CensusGCClient(config.geocoding_service, http_client)
-            stop_reader = StopReader(state_store, static_store, geocoder)
+            osrm_client = OsrmClient(config.osrm_url, http_client)
 
-            handler = Handler(stop_reader=stop_reader)
+            stop_reader = StopReader(state_store, static_store, geocoder)
+            planner = PlannerEngine(stop_reader, osrm_client, geocoder)
+
+            handler = Handler(stop_reader=stop_reader, planner=planner)
             adapters = [CommandLineAdapter(handler)]
 
             await asyncio.gather(*(a.start() for a in adapters))

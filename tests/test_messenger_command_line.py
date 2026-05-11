@@ -1,5 +1,5 @@
 from transit_core.messenger.adapters.command_line import CommandLineAdapter
-from transit_core.messenger.views import Section, Table
+from transit_core.messenger.views import Section, Stack, Table
 
 
 def _adapter() -> CommandLineAdapter:
@@ -49,3 +49,19 @@ def test_format_section_with_nested_table():
 def test_format_section_without_subtitle_or_body():
     rendered = _adapter().format(Section(title="Done"))
     assert rendered == "Done"
+
+
+def test_format_stack_joins_children_with_blank_line():
+    stack = Stack(items=[Section(title="A"), Section(title="B")])
+    rendered = _adapter().format(stack)
+    assert rendered == "A\n\nB"
+
+
+def test_format_section_with_stack_body():
+    section = Section(
+        title="Top",
+        subtitle="sub",
+        body=Stack(items=[Section(title="A"), Section(title="B")]),
+    )
+    rendered = _adapter().format(section)
+    assert rendered == "Top\nsub\n\nA\n\nB"

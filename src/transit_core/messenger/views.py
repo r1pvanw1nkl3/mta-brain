@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Union
 
 
 @dataclass(frozen=True)
@@ -8,10 +9,15 @@ class Table:
 
 
 @dataclass(frozen=True)
+class Stack:
+    items: list["View"]
+
+
+@dataclass(frozen=True)
 class Section:
     title: str
     subtitle: str | None = None
-    body: Table | str | None = None
+    body: Union["View", None] = None
 
 
-View = Section | Table | str
+View = Section | Table | Stack | str

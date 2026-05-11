@@ -1,7 +1,12 @@
 import time
 
-from transit_core.core.models import ArrivalsBoard, NearbyStopsResult, StopSearchResult
-from transit_core.messenger.views import Section, Table
+from transit_core.core.models import (
+    ArrivalsBoard,
+    NearbyArrivalsResult,
+    NearbyStopsResult,
+    StopSearchResult,
+)
+from transit_core.messenger.views import Section, Stack, Table, View
 
 
 def _minutes_until(arrival_epoch: int, now: int) -> str:
@@ -14,6 +19,7 @@ def present_help() -> Section:
         ["!arrivals <stop_id>", "Arrivals for a GTFS Stop ID"],
         ["!search <search query>", "Station search by name"],
         ["!nearby <address>", "Find stops near an address"],
+        ["!planner <address", "See departure boards for stops near an address"],
     ]
 
     table = Table(["Command", "Description"], rows)
@@ -79,3 +85,70 @@ def present_nearby_stops(result: NearbyStopsResult | None, query: str) -> Sectio
     ]
     table = Table(["Stop ID", "Name", "Line", "Distance"], rows)
     return Section("Nearby Stops", matched_subtitle, table)
+
+
+def present_nearby_arrivals(
+    result: NearbyArrivalsResult | None,
+    query: str,
+    max_walk_time_mins: int,
+    max_per_stop: int = 5,
+    now: int | None = None,
+) -> Section:
+    subtitle = f'Arrivals near "{query}" (within {max_walk_time_mins} min walk)'
+
+    if result is None:
+        return Section(
+            "Nearby Arrivals",
+            subtitle,
+            "Couldn't find that address. Try adding a borough or neighborhood.",
+        )
+
+    matched_subtitle = f"{subtitle} — matched: {result.matched_address}"
+
+    if not result.arrivals:
+        return Section(
+            "Nearby Arrivals",
+            matched_subtitle,
+            f"No subway stops within {max_walk_time_mins} min walk.",
+        )
+
+    now = now if now is not None else int(time.time())
+
+    sub_sections: list[View] = []
+    for board in result.arrivals:
+        if not board.arrivals or board.walk_time is None:
+            continue
+
+        walk_seconds = board.walk_time * 60
+        makeable = [a for a in board.arrivals if a.arrival_time - now >= walk_seconds][
+            :max_per_stop
+        ]
+
+        if not makeable:
+            continue
+
+        rows = [
+            [
+                a.route_id,
+                a.direction,
+                a.headsign or "",
+                _minutes_until(a.arrival_time, now),
+            ]
+            for a in makeable
+        ]
+        sub_sections.append(
+            Section(
+                board.stop_name,
+                f"{round(board.walk_time)} min walk",
+                Table(["Route", "Dir", "Destination", "ETA"], rows),
+            )
+        )
+
+    if not sub_sections:
+        return Section(
+            "Nearby Arrivals",
+            matched_subtitle,
+            "No upcoming arrivals at nearby stops.",
+        )
+
+    return Section("Nearby Arrivals", matched_subtitle, Stack(sub_sections))

@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
 
         app.state.osrm_client = OsrmClient(config.osrm_url, http_client)
         app.state.planner_engine = PlannerEngine(
-            app.state.stop_reader, app.state.osrm_client
+            app.state.stop_reader, app.state.osrm_client, geocoder
         )
         yield
 

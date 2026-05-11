@@ -71,6 +71,11 @@ class NearbyStopsResult(BaseModel):
     stops: list[NearbyStop]
 
 
+class NearbyArrivalsResult(BaseModel):
+    matched_address: str
+    arrivals: list[ArrivalsBoard]
+
+
 class StopSearchResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

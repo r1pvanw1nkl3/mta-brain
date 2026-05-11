@@ -34,6 +34,12 @@ def parse_message(message: str) -> ParsedCommand | ParseError | None:
             if len(commands) > 1:
                 return ParsedCommand("nearby", {"address": " ".join(commands[1:])})
             return ParseError("usage: !nearby <street address, city>")
+        case "planner":
+            if len(commands) > 1:
+                return ParsedCommand(
+                    "planner", args={"address": " ".join(commands[1:])}
+                )
+            return ParseError("usage: !planner <street address, city>")
         case "help":
             return ParsedCommand("help", {})
         case _:

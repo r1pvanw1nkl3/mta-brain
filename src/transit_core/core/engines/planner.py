@@ -1,12 +1,30 @@
-from transit_core.core.interfaces import StreetRoutingService
-from transit_core.core.models import ArrivalsBoard, Coordinates
+from transit_core.core.interfaces import GeocodingService, StreetRoutingService
+from transit_core.core.models import ArrivalsBoard, Coordinates, NearbyArrivalsResult
 from transit_core.core.repository import StopReader
 
 
 class PlannerEngine:
-    def __init__(self, stop_reader: StopReader, routing_service: StreetRoutingService):
+    def __init__(
+        self,
+        stop_reader: StopReader,
+        routing_service: StreetRoutingService,
+        geocoder: GeocodingService,
+    ):
         self.stop_reader = stop_reader
         self.routing_service = routing_service
+        self.geocoder = geocoder
+
+    async def get_arrivals_by_address(
+        self, address: str, max_walk_time_mins: int
+    ) -> NearbyArrivalsResult | None:
+        result = await self.geocoder.get_coords(address)
+        if result is None:
+            return None
+
+        return NearbyArrivalsResult(
+            matched_address=result.matched_address,
+            arrivals=await self.get_nearby_arrivals(result.coords, max_walk_time_mins),
+        )
 
     async def get_nearby_arrivals(
         self, location: Coordinates, max_walk_time_mins: int = 25

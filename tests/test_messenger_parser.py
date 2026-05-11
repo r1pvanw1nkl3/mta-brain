@@ -51,3 +51,14 @@ def test_nearby_without_arg_returns_parse_error():
     result = parse_message("!nearby")
     assert isinstance(result, ParseError)
     assert "nearby" in result.message.lower() or "address" in result.message.lower()
+
+
+def test_planner_with_address_returns_parsed_command():
+    result = parse_message("!planner 350 5th Ave")
+    assert result == ParsedCommand("planner", {"address": "350 5th Ave"})
+
+
+def test_planner_without_arg_returns_parse_error():
+    result = parse_message("!planner")
+    assert isinstance(result, ParseError)
+    assert "planner" in result.message.lower() or "address" in result.message.lower()

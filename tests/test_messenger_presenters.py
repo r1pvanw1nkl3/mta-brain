@@ -4,6 +4,7 @@ from transit_core.core.models import (
     Arrival,
     ArrivalsBoard,
     Coordinates,
+    NearbyArrivalsResult,
     NearbyStop,
     NearbyStopsResult,
     StopSearchResult,
@@ -11,10 +12,11 @@ from transit_core.core.models import (
 from transit_core.messenger.presenters import (
     _minutes_until,
     present_arrivals_board,
+    present_nearby_arrivals,
     present_nearby_stops,
     present_stop_search_results,
 )
-from transit_core.messenger.views import Section, Table
+from transit_core.messenger.views import Section, Stack, Table
 
 
 def _board(arrivals: list[Arrival]) -> ArrivalsBoard:
@@ -145,3 +147,163 @@ def test_present_nearby_stops_populated_returns_table():
     assert table.headers == ["Stop ID", "Name", "Line", "Distance"]
     assert table.rows[0] == ["R20", "34 St-Herald Sq", "BDFM", "123 m"]
     assert table.rows[1] == ["D17", "34 St-Penn Station", "ACE", "456 m"]
+
+
+def _planner_board(
+    stop_id: str, name: str, walk_time: float, arrivals: list[Arrival]
+) -> ArrivalsBoard:
+    return ArrivalsBoard(
+        gtfs_stop_id=stop_id,
+        stop_name=name,
+        arrivals=arrivals,
+        walk_time=walk_time,
+    )
+
+
+def test_present_nearby_arrivals_none_returns_friendly_message():
+    section = present_nearby_arrivals(None, "9999 Made Up St", max_walk_time_mins=5)
+    assert isinstance(section, Section)
+    assert isinstance(section.body, str)
+    assert "couldn't find" in section.body.lower()
+
+
+def test_present_nearby_arrivals_empty_arrivals_list():
+    result = NearbyArrivalsResult(matched_address="350 5TH AVE", arrivals=[])
+    section = present_nearby_arrivals(result, "350 5th Ave", max_walk_time_mins=5)
+    assert isinstance(section, Section)
+    assert isinstance(section.body, str)
+    assert "within 5 min walk" in section.body.lower()
+
+
+def test_present_nearby_arrivals_filters_unmakeable():
+    now = 1_700_000_000
+    # walk_time = 5 min → 300s. Arrival at +120s is unmakeable, +600s is makeable.
+    result = NearbyArrivalsResult(
+        matched_address="350 5TH AVE",
+        arrivals=[
+            _planner_board(
+                "A1",
+                "Stop A",
+                walk_time=5.0,
+                arrivals=[_arrival(now + 120), _arrival(now + 600, route_id="N")],
+            ),
+        ],
+    )
+    section = present_nearby_arrivals(
+        result, "350 5th Ave", max_walk_time_mins=10, now=now
+    )
+    assert isinstance(section, Section)
+    stack = section.body
+    assert isinstance(stack, Stack)
+    assert len(stack.items) == 1
+    inner = stack.items[0]
+    assert isinstance(inner, Section)
+    table = inner.body
+    assert isinstance(table, Table)
+    assert len(table.rows) == 1  # +120s arrival filtered out
+    assert table.rows[0][0] == "N"
+
+
+def test_present_nearby_arrivals_caps_per_stop():
+    now = 1_700_000_000
+    # 10 makeable arrivals; default max_per_stop=5
+    arrivals = [_arrival(now + 600 + i * 60, route_id=f"R{i}") for i in range(10)]
+    result = NearbyArrivalsResult(
+        matched_address="350 5TH AVE",
+        arrivals=[_planner_board("A1", "Stop A", walk_time=5.0, arrivals=arrivals)],
+    )
+    section = present_nearby_arrivals(
+        result, "350 5th Ave", max_walk_time_mins=10, now=now
+    )
+    stack = section.body
+    assert isinstance(stack, Stack)
+    inner = stack.items[0]
+    assert isinstance(inner, Section)
+    table = inner.body
+    assert isinstance(table, Table)
+    assert len(table.rows) == 5
+    assert [r[0] for r in table.rows] == ["R0", "R1", "R2", "R3", "R4"]
+
+
+def test_present_nearby_arrivals_skips_boards_with_no_walk_time():
+    now = 1_700_000_000
+    result = NearbyArrivalsResult(
+        matched_address="350 5TH AVE",
+        arrivals=[
+            ArrivalsBoard(
+                gtfs_stop_id="A1",
+                stop_name="Stop A",
+                arrivals=[_arrival(now + 600)],
+                walk_time=None,
+            ),
+            _planner_board(
+                "B1", "Stop B", walk_time=2.0, arrivals=[_arrival(now + 600)]
+            ),
+        ],
+    )
+    section = present_nearby_arrivals(
+        result, "350 5th Ave", max_walk_time_mins=10, now=now
+    )
+    stack = section.body
+    assert isinstance(stack, Stack)
+    assert len(stack.items) == 1
+    inner = stack.items[0]
+    assert isinstance(inner, Section)
+    assert inner.title == "Stop B"
+
+
+def test_present_nearby_arrivals_all_unmakeable_returns_no_arrivals_message():
+    now = 1_700_000_000
+    # walk_time = 10 min (600s); arrival at +60s is unmakeable.
+    result = NearbyArrivalsResult(
+        matched_address="350 5TH AVE",
+        arrivals=[
+            _planner_board(
+                "A1", "Stop A", walk_time=10.0, arrivals=[_arrival(now + 60)]
+            ),
+        ],
+    )
+    section = present_nearby_arrivals(
+        result, "350 5th Ave", max_walk_time_mins=15, now=now
+    )
+    assert isinstance(section.body, str)
+    assert "no upcoming arrivals" in section.body.lower()
+
+
+def test_present_nearby_arrivals_populated_structure():
+    now = 1_700_000_000
+    result = NearbyArrivalsResult(
+        matched_address="350 5TH AVE, NEW YORK, NY",
+        arrivals=[
+            _planner_board(
+                "A1",
+                "Stop A",
+                walk_time=3.0,
+                arrivals=[_arrival(now + 600, route_id="6")],
+            ),
+            _planner_board(
+                "B1",
+                "Stop B",
+                walk_time=4.0,
+                arrivals=[_arrival(now + 900, route_id="N")],
+            ),
+        ],
+    )
+    section = present_nearby_arrivals(
+        result, "350 5th Ave", max_walk_time_mins=5, now=now
+    )
+    assert isinstance(section, Section)
+    assert section.subtitle is not None
+    assert "350 5th Ave" in section.subtitle
+    assert "350 5TH AVE, NEW YORK, NY" in section.subtitle
+
+    stack = section.body
+    assert isinstance(stack, Stack)
+    assert len(stack.items) == 2
+
+    first = stack.items[0]
+    assert isinstance(first, Section)
+    assert first.title == "Stop A"
+    assert first.subtitle == "3 min walk"
+    assert isinstance(first.body, Table)
+    assert first.body.headers == ["Route", "Dir", "Destination", "ETA"]

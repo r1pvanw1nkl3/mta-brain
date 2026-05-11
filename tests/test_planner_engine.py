@@ -3,8 +3,14 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from transit_core.core.engines.planner import PlannerEngine
-from transit_core.core.interfaces import StreetRoutingService
-from transit_core.core.models import Arrival, ArrivalsBoard, Coordinates, NearbyStop
+from transit_core.core.interfaces import GeocodingService, StreetRoutingService
+from transit_core.core.models import (
+    Arrival,
+    ArrivalsBoard,
+    Coordinates,
+    GeocodeMatch,
+    NearbyStop,
+)
 from transit_core.core.repository import StopReader
 
 
@@ -19,9 +25,16 @@ def mock_routing_service():
 
 
 @pytest.fixture
-def planner_engine(mock_stop_reader, mock_routing_service):
+def mock_geocoder():
+    return AsyncMock(spec=GeocodingService)
+
+
+@pytest.fixture
+def planner_engine(mock_stop_reader, mock_routing_service, mock_geocoder):
     return PlannerEngine(
-        stop_reader=mock_stop_reader, routing_service=mock_routing_service
+        stop_reader=mock_stop_reader,
+        routing_service=mock_routing_service,
+        geocoder=mock_geocoder,
     )
 
 
@@ -96,3 +109,34 @@ async def test_get_nearby_arrivals_no_stops(
 
     boards = await planner_engine.get_nearby_arrivals(user_loc)
     assert boards == []
+
+
+@pytest.mark.asyncio
+async def test_get_arrivals_by_address_geocode_miss_returns_none(
+    planner_engine, mock_geocoder
+):
+    mock_geocoder.get_coords.return_value = None
+
+    result = await planner_engine.get_arrivals_by_address("nowhere", 5)
+
+    assert result is None
+    mock_geocoder.get_coords.assert_awaited_once_with("nowhere")
+
+
+@pytest.mark.asyncio
+async def test_get_arrivals_by_address_success(
+    planner_engine, mock_geocoder, mock_stop_reader, mock_routing_service
+):
+    coords = Coordinates(lat=40.75, lon=-73.98)
+    mock_geocoder.get_coords.return_value = GeocodeMatch(
+        coords=coords, matched_address="350 5TH AVE, NEW YORK, NY"
+    )
+    mock_stop_reader.get_nearby_stops.return_value = []
+    mock_routing_service.get_walk_times.return_value = {}
+
+    result = await planner_engine.get_arrivals_by_address("350 5th Ave", 5)
+
+    assert result is not None
+    assert result.matched_address == "350 5TH AVE, NEW YORK, NY"
+    assert result.arrivals == []
+    mock_geocoder.get_coords.assert_awaited_once_with("350 5th Ave")
