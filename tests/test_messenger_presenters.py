@@ -1,3 +1,5 @@
+from typing import Any
+
 from transit_core.core.models import Arrival, ArrivalsBoard
 from transit_core.messenger.presenters import _minutes_until, present_arrivals_board
 from transit_core.messenger.views import Section, Table
@@ -9,8 +11,8 @@ def _board(arrivals: list[Arrival]) -> ArrivalsBoard:
     )
 
 
-def _arrival(arrival_time: int, **overrides) -> Arrival:
-    defaults = dict(
+def _arrival(arrival_time: int, **overrides: Any) -> Arrival:
+    defaults: dict[str, Any] = dict(
         trip_id="T1",
         route_id="6",
         headsign="Pelham Bay Park",

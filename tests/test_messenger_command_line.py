@@ -1,9 +1,9 @@
-from transit_core.messenger.adapters.command_line import CommandLine
+from transit_core.messenger.adapters.command_line import CommandLineAdapter
 from transit_core.messenger.views import Section, Table
 
 
-def _adapter() -> CommandLine:
-    return CommandLine(handler=None)
+def _adapter() -> CommandLineAdapter:
+    return CommandLineAdapter(handler=None)
 
 
 def test_format_string_passes_through():

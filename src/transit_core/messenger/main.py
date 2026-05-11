@@ -5,7 +5,7 @@ from transit_core.core.repository import StopReader
 from transit_core.db import create_db_pool
 from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.infrastructure.static_store import PostgresStaticStore
-from transit_core.messenger.adapters.command_line import CommandLine
+from transit_core.messenger.adapters.command_line import CommandLineAdapter
 from transit_core.messenger.handler import Handler
 from transit_core.redis_client import RedisClient
 from transit_core.transit_core_logging import setup_logging
@@ -29,10 +29,10 @@ async def _run():
     stop_reader = StopReader(state_store, static_store)
 
     handler = Handler(stop_reader=stop_reader)
-    adapter = CommandLine(handler)
+    adapters = [CommandLineAdapter(handler)]
 
     try:
-        await adapter.start()
+        await asyncio.gather(*(a.start() for a in adapters))
     finally:
         db_pool.close()
         redis_client.client.close()

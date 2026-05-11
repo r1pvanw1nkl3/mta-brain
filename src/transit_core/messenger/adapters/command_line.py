@@ -4,7 +4,7 @@ from transit_core.messenger.models import Message
 from transit_core.messenger.views import Section, Table, View
 
 
-class CommandLine:
+class CommandLineAdapter:
     def __init__(self, handler):
         self.session_id = str(uuid.uuid4())
         self.handler = handler
