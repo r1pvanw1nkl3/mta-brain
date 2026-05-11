@@ -45,7 +45,7 @@ class CommandLineAdapter:
         try:
             while True:
                 command = input("> ")
-                response = self.handler.handle(command, self.session_id)
+                response = await self.handler.handle(command, self.session_id)
                 if response is not None:
                     await self.send(response)
         except KeyboardInterrupt:

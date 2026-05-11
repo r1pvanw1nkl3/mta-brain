@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     subway_entrances_url: str = (
         "https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD"
     )
+    geocoding_service: str = (
+        "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+    )
 
     @computed_field
     def etl_database_url(self) -> str:

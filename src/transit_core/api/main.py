@@ -8,6 +8,7 @@ from transit_core.config import get_settings
 from transit_core.core.engines.planner import PlannerEngine
 from transit_core.core.repository import StopReader, TripReader
 from transit_core.db import create_db_pool
+from transit_core.infrastructure.census_gc_client import CensusGCClient
 from transit_core.infrastructure.osrm_client import OsrmClient
 from transit_core.infrastructure.state_store import RedisStateStore
 from transit_core.infrastructure.static_store import PostgresStaticStore
@@ -33,12 +34,17 @@ async def lifespan(app: FastAPI):
     db_pool = create_db_pool(config.app_database_url)
     app.state.static_store = PostgresStaticStore(db_pool)
 
-    app.state.stop_reader = StopReader(app.state.state_store, app.state.static_store)
-    app.state.trip_reader = TripReader(app.state.state_store, app.state.static_store)
-
     async with AsyncClient() as http_client:
-        app.state.osrm_client = OsrmClient(config.osrm_url, http_client)
+        geocoder = CensusGCClient(config.geocoding_service, http_client)
 
+        app.state.stop_reader = StopReader(
+            app.state.state_store, app.state.static_store, geocoder
+        )
+        app.state.trip_reader = TripReader(
+            app.state.state_store, app.state.static_store
+        )
+
+        app.state.osrm_client = OsrmClient(config.osrm_url, http_client)
         app.state.planner_engine = PlannerEngine(
             app.state.stop_reader, app.state.osrm_client
         )

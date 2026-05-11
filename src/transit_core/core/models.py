@@ -66,6 +66,11 @@ class NearbyStop(BaseModel):
         return data_dict
 
 
+class NearbyStopsResult(BaseModel):
+    matched_address: str
+    stops: list[NearbyStop]
+
+
 class StopSearchResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -73,6 +78,11 @@ class StopSearchResult(BaseModel):
     stop_name: str
     routes: str
     rank: int
+
+
+class GeocodeMatch(BaseModel):
+    coords: Coordinates
+    matched_address: str
 
 
 # GTFS models

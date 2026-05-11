@@ -4,8 +4,14 @@ import time
 
 import transit_core.core.models as md
 from transit_core.config import get_settings
-from transit_core.core.interfaces import StateStore, StaticStore
-from transit_core.core.models import ArrivalsBoard, Coordinates, NearbyStop
+from transit_core.core.interfaces import GeocodingService, StateStore, StaticStore
+from transit_core.core.models import (
+    ArrivalsBoard,
+    Coordinates,
+    NearbyStop,
+    NearbyStopsResult,
+    StopSearchResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,9 +125,15 @@ class StopWriter:
 
 
 class StopReader:
-    def __init__(self, state_store: StateStore, static_store: StaticStore):
+    def __init__(
+        self,
+        state_store: StateStore,
+        static_store: StaticStore,
+        geocoder: GeocodingService,
+    ):
         self.state_store = state_store
         self.static_store = static_store
+        self.geocoder = geocoder
 
     def get_stop_name(self, stop_id: str) -> str:
         return self.static_store.get_stop_name(stop_id)
@@ -129,6 +141,18 @@ class StopReader:
     def get_nearby_stops(self, location: Coordinates, count: int) -> list[NearbyStop]:
         result = self.static_store.get_nearby_stops(location, count)
         return result
+
+    async def get_stops_near_address(
+        self, address: str, count: int
+    ) -> NearbyStopsResult | None:
+        result = await self.geocoder.get_coords(address)
+        if result is None:
+            return None
+
+        return NearbyStopsResult(
+            matched_address=result.matched_address,
+            stops=self.static_store.get_nearby_stops(result.coords, count),
+        )
 
     def get_arrivals_board(
         self, stop_id: str, lookahead_min: int = 60, get_schedules: bool = True
@@ -309,7 +333,7 @@ class StopReader:
 
         return result
 
-    def fuzzy_station_search(self, search_string: str):
+    def fuzzy_station_search(self, search_string: str) -> list[StopSearchResult]:
         params = self._get_station_search_params(search_string)
 
         return self.static_store.fuzzy_station_search(

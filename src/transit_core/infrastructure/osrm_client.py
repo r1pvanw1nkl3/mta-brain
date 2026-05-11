@@ -24,16 +24,23 @@ class OsrmClient:
         coords_list = [user_location] + [stop_locations[sid] for sid in stop_ids]
 
         path = ";".join([self._format_coordinates(c) for c in coords_list])
-        url = f"{self.osrm_url}/table/v1/foot/{path}?sources=0"
 
         try:
-            response = await self.http_client.get(url)
+            response = await self.http_client.get(
+                f"{self.osrm_url}/table/v1/foot/{path}",
+                params={"sources": 0},
+            )
+            response.raise_for_status()
             data = response.json()
-            raw_walk_times = data["durations"][0][1:]
 
+            if data.get("code") != "Ok":
+                raise RuntimeError(f"OSRM returned non-Ok code: {data.get('code')}")
+
+            raw_walk_times = data["durations"][0][1:]
             return {
                 stop_id: float(duration)
                 for stop_id, duration in zip(stop_ids, raw_walk_times)
+                if duration is not None
             }
         except httpx.HTTPStatusError as e:
             logger.exception(
@@ -48,9 +55,6 @@ class OsrmClient:
             logger.exception(
                 f"Malformed response from OSRM. Missing expected keys: {e}"
             )
-            raise
-        except Exception as e:
-            logger.exception(f"Exception occurred during OSRM call: {e}")
             raise
 
     def _format_coordinates(self, coords: Coordinates) -> str:

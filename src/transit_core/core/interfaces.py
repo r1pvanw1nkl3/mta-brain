@@ -1,6 +1,11 @@
 from typing import Any, ContextManager, Protocol, runtime_checkable
 
-from transit_core.core.models import Coordinates, NearbyStop, StopSearchResult
+from transit_core.core.models import (
+    Coordinates,
+    GeocodeMatch,
+    NearbyStop,
+    StopSearchResult,
+)
 
 
 @runtime_checkable
@@ -45,3 +50,8 @@ class StaticStore(Protocol):
         has_single_char: bool,
         regex_pattern: str | None = None,
     ) -> list[StopSearchResult]: ...
+
+
+@runtime_checkable
+class GeocodingService(Protocol):
+    async def get_coords(self, address: str) -> GeocodeMatch | None: ...

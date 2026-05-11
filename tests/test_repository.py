@@ -71,7 +71,11 @@ def test_stop_reader_get_arrivals_board_unified():
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
     mock_static_store.get_stop_name.return_value = "Test Stop"
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     stop_id = "S1"
     # S1N: Live match, S1S: Live-Added
@@ -138,7 +142,11 @@ def test_stop_reader_fuzzy_match_skips_already_matched():
     mock_static_store = MagicMock()
     mock_static_store.get_trip_metadata.return_value = None
     mock_static_store.get_stop_name.return_value = "Unknown"
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     # Two live trains, same route (inferred from IDs)
     t1, t2 = "100000_1..N", "100100_1..N"
@@ -196,7 +204,11 @@ def test_keys():
 def test_stop_reader_get_stop_name():
     mock_state_store = MagicMock()
     mock_static_store = MagicMock()
-    reader = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    reader = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
     mock_static_store.get_stop_name.return_value = "Stop 1"
     assert reader.get_stop_name("S1") == "Stop 1"
     mock_static_store.get_stop_name.assert_called_once_with("S1")
@@ -295,7 +307,11 @@ def test_stop_reader_get_arrivals_board_specific_platform():
     mock_static_store = MagicMock()
     mock_static_store.get_trip_metadata.return_value = None
     mock_static_store.get_stop_name.return_value = "Unknown"
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     # Request ONLY Northbound
     stop_id = "S1N"
@@ -327,7 +343,11 @@ def test_stop_reader_fuzzy_matching_and_inference():
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
     mock_static_store.get_stop_name.return_value = "Test Stop"
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     # 1. Trip ID with route in it: 081300_B..S66R -> Route B
     trip_id = "081300_B..S66R"
@@ -360,7 +380,11 @@ def test_stop_reader_static_suffix_fallback():
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
     mock_static_store.get_stop_name.return_value = "Test Stop"
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     trip_id = "LIVE_TRIP"
     mock_state_store.get_zset.return_value = {trip_id: now + 600}
@@ -387,7 +411,11 @@ def test_stop_reader_drops_old_trains():
     mock_state_store.get_kv.return_value = None
     mock_static_store = MagicMock()
     mock_static_store.get_stop_name.return_value = "Test Stop"
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     mock_state_store.get_zset.return_value = {}
     mock_static_store.get_scheduled_arrivals.return_value = [
@@ -418,7 +446,11 @@ def test_stop_reader_with_redis_metadata():
     now = 1700000000
     mock_state_store = MagicMock()
     mock_static_store = MagicMock()
-    repo = StopReader(state_store=mock_state_store, static_store=mock_static_store)
+    repo = StopReader(
+        state_store=mock_state_store,
+        static_store=mock_static_store,
+        geocoder=MagicMock(),
+    )
 
     trip_id = "METADATA_TRIP"
     mock_state_store.get_zset.return_value = {trip_id: now + 600}
