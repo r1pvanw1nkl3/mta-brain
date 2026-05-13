@@ -16,10 +16,13 @@ def _minutes_until(arrival_epoch: int, now: int) -> str:
 
 def present_help() -> Section:
     rows = [
-        ["!arrivals <stop_id>", "Arrivals for a GTFS Stop ID"],
+        [
+            "!arrivals <stop_id>",
+            "Arrivals for a GTFS Stop ID. Add N or S to view uptown/downtown trains.",
+        ],
         ["!search <search query>", "Station search by name"],
         ["!nearby <address>", "Find stops near an address"],
-        ["!planner <address", "See departure boards for stops near an address"],
+        ["!planner <address>", "See departure boards for stops near an address"],
     ]
 
     table = Table(["Command", "Description"], rows)

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     redis_max_connections: int = 20
     redis_gtfs_ttl: int = 300
     trip_metadata_ttl: int = 3600
+    live_poll_interval_seconds: int = 15
 
     osrm_url: str = "http://localhost:5005"
 

@@ -47,20 +47,31 @@ def worker(key, trip_repo, stop_repo, state_store):
 
     while True:
         try:
-            start_time = time.time()
+            cycle_start = time.perf_counter()
+            fetch_elapsed = 0.0
+            parse_elapsed = 0.0
+            hydrate_elapsed = 0.0
 
+            fetch_start = time.perf_counter()
             raw_feed = fp.fetch_raw_feed(feed_url)
+            fetch_elapsed = time.perf_counter() - fetch_start
+
             if raw_feed is not None:
                 if state_store.check_and_update_timestamp(
                     Keys.feed(key), int(raw_feed.get("header", {}).get("timestamp", 0))
                 ):
+                    parse_start = time.perf_counter()
                     feed = fp.validate_feed(raw_feed)
+                    parse_elapsed = time.perf_counter() - parse_start
+
+                    hydrate_start = time.perf_counter()
                     sm.hydrate_realtime_data(
                         feed=feed, trip_repo=trip_repo, stop_repo=stop_repo
                     )
+                    hydrate_elapsed = time.perf_counter() - hydrate_start
 
-            elapsed = time.time() - start_time
-            sleep_time = max(0, (settings.redis_gtfs_ttl / 3) - elapsed)
+            elapsed = time.perf_counter() - cycle_start
+            sleep_time = max(0, settings.live_poll_interval_seconds - elapsed)
 
             logger.info(
                 "Hydrated feed",
@@ -68,6 +79,9 @@ def worker(key, trip_repo, stop_repo, state_store):
                     "feed_key": key,
                     "feed_url": feed_url,
                     "elapsed_seconds": round(elapsed, 2),
+                    "fetch_seconds": round(fetch_elapsed, 3),
+                    "parse_seconds": round(parse_elapsed, 3),
+                    "hydrate_seconds": round(hydrate_elapsed, 3),
                 },
             )
             time.sleep(sleep_time)
