@@ -1,4 +1,4 @@
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import transit_core.core.models as md
 from transit_core.config import get_settings
@@ -28,7 +28,7 @@ def test_trip_repository_update_trip_status():
     assert args[0] == Keys.trip("T1")
     assert "T1" in args[1]
     assert "R1" in args[1]
-    assert mock_state_store.set_kv.call_args[1].get("expiry") == ANY or args[2] == ANY
+    assert args[2] == config.trip_metadata_ttl
 
 
 def test_trip_repository_get_trip_status():
@@ -477,3 +477,78 @@ def test_stop_reader_with_redis_metadata():
     assert board.arrivals[0].route_id == "G"
     assert board.arrivals[0].headsign == "Court Sq"
     assert board.arrivals[0].status == "LIVE-ADDED"
+
+
+def test_stop_reader_get_nearby_stops_delegates_to_static_store():
+    mock_static_store = MagicMock()
+    loc = md.Coordinates(lat=40.75, lon=-73.98)
+    expected = [
+        md.NearbyStop(
+            id=1,
+            stop_name="Stop A",
+            gtfs_stop_id="A1",
+            line="A",
+            coordinates=md.Coordinates(lat=40.751, lon=-73.981),
+            dist_meters=100.0,
+        )
+    ]
+    mock_static_store.get_nearby_stops.return_value = expected
+    reader = StopReader(
+        state_store=MagicMock(),
+        static_store=mock_static_store,
+        geocoder=AsyncMock(),
+    )
+
+    result = reader.get_nearby_stops(loc, 5)
+
+    assert result == expected
+    mock_static_store.get_nearby_stops.assert_called_once_with(loc, 5)
+
+
+async def test_stop_reader_get_stops_near_address_success():
+    coords = md.Coordinates(lat=40.748, lon=-73.985)
+    mock_geocoder = AsyncMock()
+    mock_geocoder.get_coords.return_value = md.GeocodeMatch(
+        coords=coords, matched_address="350 5TH AVE, NEW YORK, NY"
+    )
+    mock_static_store = MagicMock()
+    stops = [
+        md.NearbyStop(
+            id=1,
+            stop_name="Stop A",
+            gtfs_stop_id="A1",
+            line="A",
+            coordinates=coords,
+            dist_meters=120.0,
+        )
+    ]
+    mock_static_store.get_nearby_stops.return_value = stops
+    reader = StopReader(
+        state_store=MagicMock(),
+        static_store=mock_static_store,
+        geocoder=mock_geocoder,
+    )
+
+    result = await reader.get_stops_near_address("350 5th Ave", 5)
+
+    assert result is not None
+    assert result.matched_address == "350 5TH AVE, NEW YORK, NY"
+    assert result.stops == stops
+    mock_geocoder.get_coords.assert_awaited_once_with("350 5th Ave")
+    mock_static_store.get_nearby_stops.assert_called_once_with(coords, 5)
+
+
+async def test_stop_reader_get_stops_near_address_geocode_miss_returns_none():
+    mock_geocoder = AsyncMock()
+    mock_geocoder.get_coords.return_value = None
+    mock_static_store = MagicMock()
+    reader = StopReader(
+        state_store=MagicMock(),
+        static_store=mock_static_store,
+        geocoder=mock_geocoder,
+    )
+
+    result = await reader.get_stops_near_address("nowhere", 5)
+
+    assert result is None
+    mock_static_store.get_nearby_stops.assert_not_called()

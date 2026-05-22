@@ -160,7 +160,6 @@ def test_station_search_error(mock_ctx, mock_stop_reader):
     assert result is None
 
 
-@pytest.mark.anyio
 async def test_lifespan():
     mock_server = MagicMock()
     mock_redis = MagicMock()

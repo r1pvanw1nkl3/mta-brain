@@ -1,11 +1,8 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from transit_core.api.main import lifespan
 
 
-@pytest.mark.anyio
 async def test_lifespan():
     mock_app = MagicMock()
     mock_redis = MagicMock()

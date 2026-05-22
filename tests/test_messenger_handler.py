@@ -1,7 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from transit_core.core.engines.planner import PlannerEngine
 from transit_core.core.models import (
     ArrivalsBoard,
@@ -18,7 +16,6 @@ def _empty_board() -> ArrivalsBoard:
     return ArrivalsBoard(gtfs_stop_id="635N", stop_name="14 St", arrivals=[])
 
 
-@pytest.mark.asyncio
 async def test_handle_non_command_returns_none():
     handler = Handler(
         stop_reader=MagicMock(spec=StopReader),
@@ -27,7 +24,6 @@ async def test_handle_non_command_returns_none():
     assert await handler.handle("hello", "user-1") is None
 
 
-@pytest.mark.asyncio
 async def test_handle_parse_error_returns_message_with_error_text():
     handler = Handler(
         stop_reader=MagicMock(spec=StopReader),
@@ -40,7 +36,6 @@ async def test_handle_parse_error_returns_message_with_error_text():
     assert "stop_id" in msg.body
 
 
-@pytest.mark.asyncio
 async def test_handle_arrivals_calls_reader_and_returns_section():
     mock_reader = MagicMock(spec=StopReader)
     mock_reader.get_arrivals_board.return_value = _empty_board()
@@ -54,7 +49,6 @@ async def test_handle_arrivals_calls_reader_and_returns_section():
     assert isinstance(msg.body, Section)
 
 
-@pytest.mark.asyncio
 async def test_handle_search_calls_reader_and_returns_section():
     mock_reader = MagicMock(spec=StopReader)
     mock_reader.fuzzy_station_search.return_value = []
@@ -67,7 +61,6 @@ async def test_handle_search_calls_reader_and_returns_section():
     assert isinstance(msg.body, Section)
 
 
-@pytest.mark.asyncio
 async def test_handle_nearby_calls_reader_with_normalized_address():
     mock_reader = MagicMock(spec=StopReader)
     mock_reader.get_stops_near_address = AsyncMock(
@@ -86,7 +79,6 @@ async def test_handle_nearby_calls_reader_with_normalized_address():
     assert isinstance(msg.body, Section)
 
 
-@pytest.mark.asyncio
 async def test_handle_nearby_with_bare_queens_returns_normalization_error_message():
     mock_reader = MagicMock(spec=StopReader)
     mock_reader.get_stops_near_address = AsyncMock()
@@ -101,7 +93,6 @@ async def test_handle_nearby_with_bare_queens_returns_normalization_error_messag
     assert "neighborhood" in msg.body.lower()
 
 
-@pytest.mark.asyncio
 async def test_handle_nearby_uses_original_query_in_subtitle():
     mock_reader = MagicMock(spec=StopReader)
     mock_reader.get_stops_near_address = AsyncMock(
@@ -120,7 +111,6 @@ async def test_handle_nearby_uses_original_query_in_subtitle():
     assert "350 5th Ave" in msg.body.subtitle
 
 
-@pytest.mark.asyncio
 async def test_handle_nearby_geocode_miss_returns_friendly_section():
     mock_reader = MagicMock(spec=StopReader)
     mock_reader.get_stops_near_address = AsyncMock(return_value=None)
@@ -135,7 +125,6 @@ async def test_handle_nearby_geocode_miss_returns_friendly_section():
     assert "couldn't find" in body.lower() or "could not find" in body.lower()
 
 
-@pytest.mark.asyncio
 async def test_handle_planner_calls_engine_with_normalized_address():
     mock_planner = MagicMock(spec=PlannerEngine)
     mock_planner.get_arrivals_by_address = AsyncMock(
@@ -155,7 +144,6 @@ async def test_handle_planner_calls_engine_with_normalized_address():
     assert isinstance(msg.body, Section)
 
 
-@pytest.mark.asyncio
 async def test_handle_planner_bare_queens_returns_normalization_error_message():
     mock_planner = MagicMock(spec=PlannerEngine)
     mock_planner.get_arrivals_by_address = AsyncMock()
@@ -169,7 +157,6 @@ async def test_handle_planner_bare_queens_returns_normalization_error_message():
     assert "neighborhood" in msg.body.lower()
 
 
-@pytest.mark.asyncio
 async def test_handle_planner_geocode_miss_returns_friendly_section():
     mock_planner = MagicMock(spec=PlannerEngine)
     mock_planner.get_arrivals_by_address = AsyncMock(return_value=None)

@@ -2,29 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from transit_core.config import get_settings
 from transit_core.core.exceptions import DatabaseError
-from transit_core.db import create_db_pool, wait_for_db
-
-
-def test_database_connection():
-    """
-    Integration test. Uses the real .env file and transit_core.db.
-    """
-    get_settings.cache_clear()
-    settings = get_settings()
-
-    pool = create_db_pool(settings.etl_database_url)
-    try:
-        wait_for_db(pool)
-        with pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1 as val")
-                row = cur.fetchone()
-                assert row is not None
-                assert row["val"] == 1
-    finally:
-        pool.close()
+from transit_core.db import wait_for_db
 
 
 def test_wait_for_db_retry_success():

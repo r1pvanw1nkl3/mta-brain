@@ -45,11 +45,14 @@ where = ["src"]
 include = ["transit_core*", "services*"]  # Explicitly tell it to look for your package
 
 [tool.coverage.run]
+source = ["transit_core", "services"]
 omit = ["*_pb2.py"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore:The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
 ]

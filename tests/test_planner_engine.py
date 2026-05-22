@@ -38,7 +38,6 @@ def planner_engine(mock_stop_reader, mock_routing_service, mock_geocoder):
     )
 
 
-@pytest.mark.asyncio
 async def test_get_nearby_arrivals(
     planner_engine, mock_stop_reader, mock_routing_service
 ):
@@ -99,7 +98,6 @@ async def test_get_nearby_arrivals(
     mock_routing_service.get_walk_times.assert_called_once()
 
 
-@pytest.mark.asyncio
 async def test_get_nearby_arrivals_no_stops(
     planner_engine, mock_stop_reader, mock_routing_service
 ):
@@ -111,7 +109,6 @@ async def test_get_nearby_arrivals_no_stops(
     assert boards == []
 
 
-@pytest.mark.asyncio
 async def test_get_arrivals_by_address_geocode_miss_returns_none(
     planner_engine, mock_geocoder
 ):
@@ -123,7 +120,6 @@ async def test_get_arrivals_by_address_geocode_miss_returns_none(
     mock_geocoder.get_coords.assert_awaited_once_with("nowhere")
 
 
-@pytest.mark.asyncio
 async def test_get_arrivals_by_address_success(
     planner_engine, mock_geocoder, mock_stop_reader, mock_routing_service
 ):
