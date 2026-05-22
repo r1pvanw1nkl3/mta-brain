@@ -91,3 +91,7 @@ data/
 # ==============================================================================
 scratch/
 CLAUDE.md
+
+# Antigravity / Gemini CLI artifacts
+.antigravitycli/
+GEMINI.md
