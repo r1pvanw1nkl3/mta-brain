@@ -54,6 +54,9 @@ jobs:
           script: |
             cd /root/mta-brain
 
+            echo "Pulling latest upstream images..."
+            docker compose pull --ignore-buildable
+
             echo "Building and starting services..."
             docker compose up -d --build --remove-orphans
 

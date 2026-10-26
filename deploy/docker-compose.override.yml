@@ -20,3 +20,7 @@ services:
   postgres:
     ports:
       - "5432:5432"
+
+  osrm:
+    ports:
+      - "5005:5000"
