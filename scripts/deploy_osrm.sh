@@ -24,6 +24,8 @@ fi
 
 HETZNER_USER=${HETZNER_USER:-root}
 PROJECT_DIR_ON_SERVER="~/mta-brain"
+# Kept outside the project dir, which CI wipes on every deploy
+OSRM_DIR_ON_SERVER="/root/osrm-data"
 OSRM_DATA_DIR="$PROJECT_ROOT/data/osrm"
 OSRM_PROFILES_DIR="$PROJECT_ROOT/profiles"
 
@@ -37,6 +39,9 @@ OSRM_PREFIX="nyc_buffered_extract"
 
 # Create local data directory
 mkdir -p "$OSRM_DATA_DIR"
+
+# Set SKIP_BUILD=1 to upload the already-built graph without rebuilding it
+if [ "$SKIP_BUILD" != "1" ]; then
 
 # 2. Download the full New York state map data
 echo "📥 Downloading latest New York map from Geofabrik..."
@@ -67,12 +72,13 @@ docker run --rm -v "$OSRM_DATA_DIR":/data osrm/osrm-backend:latest osrm-partitio
 docker run --rm -v "$OSRM_DATA_DIR":/data osrm/osrm-backend:latest osrm-customize /data/${OSRM_PREFIX}.osrm
 
 echo "✅ OSRM graph successfully built locally."
+fi
 
 # 5. Deploy to Hetzner
 echo "🚢 Deploying OSRM data to Hetzner server ($HETZNER_USER@$HETZNER_IP)..."
 
 # Ensure the target directory exists on the server
-ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "mkdir -p ${PROJECT_DIR_ON_SERVER}/data/osrm"
+ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "mkdir -p ${OSRM_DIR_ON_SERVER}"
 
 # Rsync ONLY the processed OSRM files (exclude massive raw .osm.pbf files)
 rsync -avz --progress \
@@ -80,10 +86,10 @@ rsync -avz --progress \
     --include="${OSRM_PREFIX}.*" \
     --exclude="*" \
     "$OSRM_DATA_DIR/" \
-    "${HETZNER_USER}@${HETZNER_IP}:${PROJECT_DIR_ON_SERVER}/data/osrm/"
+    "${HETZNER_USER}@${HETZNER_IP}:${OSRM_DIR_ON_SERVER}/"
 
 # 6. Restart OSRM container on the server
 echo "🔄 Restarting OSRM service on the Hetzner server..."
-ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "cd ${PROJECT_DIR_ON_SERVER} && docker compose -f deploy/docker-compose.yml -f deploy/docker-compose-prod.yml restart osrm"
+ssh -o StrictHostKeyChecking=accept-new "${HETZNER_USER}@${HETZNER_IP}" "cd ${PROJECT_DIR_ON_SERVER} && docker compose up -d --force-recreate osrm"
 
 echo "🎉 OSRM Map Deployment Pipeline Complete!"

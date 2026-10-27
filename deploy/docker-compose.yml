@@ -96,7 +96,7 @@ services:
     networks:
       - mta-brain-net
     volumes:
-      - ../data/osrm:/data
+      - ${OSRM_DATA_DIR:-../data/osrm}:/data
     command: osrm-routed --algorithm mld /data/nyc_buffered_extract.osrm
     deploy:
       resources:

@@ -40,6 +40,7 @@ jobs:
             ETL_DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_NAME=mta_brain
             REDIS_HOST=redis
+            OSRM_DATA_DIR=/root/osrm-data
             COMPOSE_FILE=deploy/docker-compose.yml:deploy/docker-compose-prod.yml
             COMPOSE_PROJECT_DIR=.
             EOF
