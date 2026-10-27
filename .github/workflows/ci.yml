@@ -73,7 +73,7 @@ jobs:
         run: |
           docker run --rm --network host \
             -v ${{ github.workspace }}/sql:/flyway/sql \
-            flyway/flyway \
+            flyway/flyway:13.11.1 \
             -url=jdbc:postgresql://localhost:5432/mta_db_test \
             -user=etl_user \
             -password=password \

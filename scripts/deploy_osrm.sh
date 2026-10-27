@@ -36,6 +36,8 @@ BBOX="-74.3,40.45,-73.65,41.1"
 MAP_URL="https://download.geofabrik.de/north-america/us/new-york-260323.osm.pbf"
 PBF_FILE="new-york-latest.osm.pbf"
 OSRM_PREFIX="nyc_buffered_extract"
+# Must match the osrm image in deploy/docker-compose.yml so the graph format matches the server
+OSRM_IMAGE="osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409"
 
 # Create local data directory
 mkdir -p "$OSRM_DATA_DIR"
@@ -63,13 +65,13 @@ echo "✅ Cropped map successfully to ${OSRM_PREFIX}.osm.pbf."
 echo "🏗️  Building OSRM routing graph (this may take a while and use high CPU/RAM)..."
 
 # Extract using our custom NYC pedestrian profile
-docker run --rm -v "$OSRM_DATA_DIR":/data -v "$OSRM_PROFILES_DIR":/profiles osrm/osrm-backend:latest osrm-extract -p /profiles/foot_nyc.lua /data/${OSRM_PREFIX}.osm.pbf
+docker run --rm -v "$OSRM_DATA_DIR":/data -v "$OSRM_PROFILES_DIR":/profiles "$OSRM_IMAGE" osrm-extract -p /profiles/foot_nyc.lua /data/${OSRM_PREFIX}.osm.pbf
 
 # Partition (for Multi-Level Dijkstra - MLD)
-docker run --rm -v "$OSRM_DATA_DIR":/data osrm/osrm-backend:latest osrm-partition /data/${OSRM_PREFIX}.osrm
+docker run --rm -v "$OSRM_DATA_DIR":/data "$OSRM_IMAGE" osrm-partition /data/${OSRM_PREFIX}.osrm
 
 # Customize
-docker run --rm -v "$OSRM_DATA_DIR":/data osrm/osrm-backend:latest osrm-customize /data/${OSRM_PREFIX}.osrm
+docker run --rm -v "$OSRM_DATA_DIR":/data "$OSRM_IMAGE" osrm-customize /data/${OSRM_PREFIX}.osrm
 
 echo "✅ OSRM graph successfully built locally."
 fi

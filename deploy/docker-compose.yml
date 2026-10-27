@@ -69,7 +69,7 @@ services:
       - mta-brain-net
 
   flyway:
-    image: flyway/flyway
+    image: flyway/flyway:13.11.1
     container_name: mta-brain-flyway
     volumes:
       - ../sql:/flyway/sql
@@ -90,7 +90,8 @@ services:
       - mta-brain-net
 
   osrm:
-    image: osrm/osrm-backend:latest
+    # v5.26.0, pinned by digest (no version tag on Docker Hub). Must match OSRM_IMAGE in scripts/deploy_osrm.sh
+    image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
     platform: linux/amd64
     container_name: mta-brain-osrm
     networks:
